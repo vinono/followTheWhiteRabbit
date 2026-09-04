@@ -1,0 +1,10 @@
+node_modules/
+.next/
+out/
+
+# Local original photographs. These are deliberately never committed.
+media/*
+!media/README.md
+
+# Local configuration only.
+.env*.local
