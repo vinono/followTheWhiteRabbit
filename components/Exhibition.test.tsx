@@ -3,6 +3,18 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Exhibition } from "./Exhibition";
 
+async function advanceExhibitionTime(milliseconds: number) {
+  await act(async () => {
+    vi.advanceTimersByTime(milliseconds);
+  });
+}
+
+async function revealRabbit(waitMilliseconds: number) {
+  await advanceExhibitionTime(700);
+  await advanceExhibitionTime(6000);
+  await advanceExhibitionTime(waitMilliseconds);
+}
+
 describe("Exhibition visitor flow", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -13,7 +25,7 @@ describe("Exhibition visitor flow", () => {
     vi.useRealTimers();
   });
 
-  it("keeps the White Rabbit as the only normal forward cue", () => {
+  it("keeps the White Rabbit as the only ordinary-motion forward cue", () => {
     render(<Exhibition />);
 
     expect(screen.queryByRole("button", { name: "Next artwork" })).toBeNull();
@@ -32,25 +44,15 @@ describe("Exhibition visitor flow", () => {
     const homeButton = screen.getByRole("button", { name: "Home" });
     homeButton.focus();
 
-    await act(async () => {
-      vi.advanceTimersByTime(700);
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(5999);
-    });
+    await advanceExhibitionTime(700);
+    await advanceExhibitionTime(5999);
     expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
 
-    await act(async () => {
-      vi.advanceTimersByTime(1);
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(1999);
-    });
+    await advanceExhibitionTime(1);
+    await advanceExhibitionTime(1999);
     expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
 
-    await act(async () => {
-      vi.advanceTimersByTime(2001);
-    });
+    await advanceExhibitionTime(2001);
 
     expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
     expect(screen.getByRole("status").textContent).toBe("White Rabbit is ready to follow.");
@@ -64,15 +66,7 @@ describe("Exhibition visitor flow", () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     render(<Exhibition />);
 
-    await act(async () => {
-      vi.advanceTimersByTime(700);
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(6000);
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(2000);
-    });
+    await revealRabbit(2000);
 
     vi.useRealTimers();
     const user = userEvent.setup();
@@ -89,20 +83,10 @@ describe("Exhibition visitor flow", () => {
   it("advances exactly one artwork after the visitor follows the rabbit", async () => {
     render(<Exhibition />);
 
-    await act(async () => {
-      vi.advanceTimersByTime(700);
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(6000);
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(4000);
-    });
+    await revealRabbit(4000);
 
     fireEvent.click(screen.getByRole("button", { name: "Follow the White Rabbit" }));
-    await act(async () => {
-      vi.advanceTimersByTime(300);
-    });
+    await advanceExhibitionTime(300);
 
     expect(screen.getByLabelText("Artwork 2 of 14")).toBeTruthy();
   });
@@ -114,9 +98,7 @@ describe("Exhibition visitor flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Browse artworks" }));
     fireEvent.click(screen.getByRole("button", { name: "View artwork 14" }));
-    await act(async () => {
-      vi.advanceTimersByTime(700);
-    });
+    await advanceExhibitionTime(700);
 
     expect(screen.getByAltText("两名乘客在车厢里相对而立")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "结束展览" }));
