@@ -29,18 +29,10 @@ export function Exhibition() {
         setIsDockOpen(false);
         setIsAboutOpen(false);
       }
-      if (!isAboutOpen && !isDockOpen) {
-        if (event.key === "ArrowRight") {
-          gotoArtwork(Math.min(current + 1, artworks.length - 1));
-        }
-        if (event.key === "ArrowLeft") {
-          gotoArtwork(Math.max(current - 1, 0));
-        }
-      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isAboutOpen, isDockOpen, current, gotoArtwork]);
+  }, []);
 
   const chooseArtwork = (index: number) => {
     gotoArtwork(index);
@@ -109,20 +101,10 @@ export function Exhibition() {
           onClick={onRabbitClick}
         />
       )}
-
-      {/* Manual / Reduced-motion direct next button */}
-      {!isEnding && current < artworks.length - 1 && (
-        <button
-          className="reducedMotionNext"
-          onClick={() => gotoArtwork(current + 1)}
-          aria-label="Next artwork"
-          title="Next artwork"
-        >
-          <span>Next</span>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M6 3l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+      {status === "RABBIT_VISIBLE" && (
+        <p className="srOnly" role="status">
+          White Rabbit is ready to follow.
+        </p>
       )}
 
       {/* Gallery Dock Trigger */}

@@ -4,8 +4,12 @@
 
 **Blocked by:** 01: 修复 Exhibition 主流程与末件状态.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] 非末件在进入完成后观看 6 秒、随机等待 2–4 秒，再显示遵守安全边缘规则的 White Rabbit。
-- [ ] White Rabbit 可通过 Tab、Enter 和 Space 操作，出现时有简短无障碍提示且不抢焦点。
-- [ ] 普通模式不显示 Next，ArrowLeft/ArrowRight 不会直接改变 Artwork。
+- [x] 非末件在进入完成后观看 6 秒、随机等待 2–4 秒，再显示遵守安全边缘规则的 White Rabbit。
+- [x] White Rabbit 可通过 Tab、Enter 和 Space 操作，出现时有简短无障碍提示且不抢焦点。
+- [x] 普通模式不显示 Next，ArrowLeft/ArrowRight 不会直接改变 Artwork。
+
+## Implementation note
+
+Mounted `Exhibition` tests cover the full dwell and wait rhythm, non-interrupting status announcement, keyboard activation, and removal of ordinary-mode shortcuts. The existing FSM continues to select from each artwork's `allowedEdges` and avoids a repeated edge when another safe edge is available.

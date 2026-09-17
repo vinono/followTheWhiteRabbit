@@ -1,14 +1,89 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Exhibition } from "./Exhibition";
 
-describe("Exhibition final artwork flow", () => {
+describe("Exhibition visitor flow", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
+  });
+
+  it("keeps the White Rabbit as the only normal forward cue", () => {
+    render(<Exhibition />);
+
+    expect(screen.queryByRole("button", { name: "Next artwork" })).toBeNull();
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(screen.getByLabelText("Artwork 1 of 14")).toBeTruthy();
+
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(screen.getByLabelText("Artwork 1 of 14")).toBeTruthy();
+  });
+
+  it("announces the rabbit after the full viewing rhythm without stealing focus", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.9999);
+    render(<Exhibition />);
+
+    const homeButton = screen.getByRole("button", { name: "Home" });
+    homeButton.focus();
+
+    await act(async () => {
+      vi.advanceTimersByTime(700);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(5999);
+    });
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1999);
+    });
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+
+    await act(async () => {
+      vi.advanceTimersByTime(2001);
+    });
+
+    expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe("White Rabbit is ready to follow.");
+    expect(document.activeElement).toBe(homeButton);
+  });
+
+  it.each([
+    ["Enter", "{Enter}"],
+    ["Space", " "],
+  ])("lets a visitor reach the rabbit by Tab and follow it with %s", async (_name, key) => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    render(<Exhibition />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(700);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(6000);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    vi.useRealTimers();
+    const user = userEvent.setup();
+    screen.getByRole("button", { name: "About" }).focus();
+    await user.tab();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Follow the White Rabbit" }),
+    );
+
+    await user.keyboard(key);
+    expect(await screen.findByLabelText("Artwork 2 of 14")).toBeTruthy();
   });
 
   it("advances exactly one artwork after the visitor follows the rabbit", async () => {

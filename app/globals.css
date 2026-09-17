@@ -197,6 +197,12 @@ button {
   transform: scale(1.08);
 }
 
+.whiteRabbit:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 6px;
+  border-radius: 999px;
+}
+
 /* Edge Alignments */
 .whiteRabbit.edge-left {
   left: 0;
