@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
+import { preload } from "react-dom";
 import { artworks, exhibition, getArtworkUrl } from "../content/artworks";
 import { useExhibitionFSM } from "../lib/exhibition-fsm";
 import { WhiteRabbit } from "./WhiteRabbit";
@@ -21,7 +23,12 @@ export function Exhibition() {
   } = useExhibitionFSM(isDockOpen || isAboutOpen);
 
   const artwork = artworks[current];
+  const nextArtwork = artworks[current + 1];
   const isEnding = status === "ENDING";
+
+  if (nextArtwork) {
+    preload(getArtworkUrl(nextArtwork), { as: "image", fetchPriority: "low" });
+  }
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -68,11 +75,15 @@ export function Exhibition() {
         ) : (
           <>
             <div className="artworkFrame">
-              <img
+              <Image
                 key={artwork.file}
                 className="artwork"
                 src={getArtworkUrl(artwork)}
                 alt={artwork.alt}
+                width={artwork.width}
+                height={artwork.height}
+                priority
+                sizes="(max-width: 760px) calc(100vw - 2rem), min(760px, 62vw)"
               />
             </div>
             <div className="label" aria-label={`Artwork ${current + 1} of ${artworks.length}`}>
@@ -132,7 +143,14 @@ export function Exhibition() {
                 onClick={() => chooseArtwork(index)}
                 aria-label={`View artwork ${index + 1}`}
               >
-                <img src={getArtworkUrl(item)} alt="" />
+                <Image
+                  src={getArtworkUrl(item)}
+                  alt=""
+                  width={item.width}
+                  height={item.height}
+                  loading="lazy"
+                  sizes="84px"
+                />
                 <span>{item.label}</span>
               </button>
             ))}

@@ -15,7 +15,7 @@
 
 ## 本地开发
 
-`media/` 是被 `.gitignore` 排除的本地原件目录。开发时，`/api/artwork/<key>` 只读这个目录，因此克隆代码的人即使没有照片也不会把它们误提交。
+`media/` 是被 `.gitignore` 排除的本地展示衍生图目录。开发时，`/api/artwork/<key>` 只读这个目录，因此克隆代码的人即使没有照片也不会把它们误提交。相机或平台导出的源原件应保存在这个项目之外的私有位置。
 
 作品数据只保存稳定对象键，例如：
 
@@ -36,13 +36,13 @@ NEXT_PUBLIC_MEDIA_BASE_URL=https://images.example.com
 页面会自动从：
 
 ```text
-/api/artwork/17941740331294347.jpg
+/api/artwork/201807/17940891781080539.jpg
 ```
 
 切换到：
 
 ```text
-https://images.example.com/17941740331294347.jpg
+https://images.example.com/201807/17940891781080539.jpg
 ```
 
 无需修改组件或把图片加入 Git。
@@ -54,4 +54,4 @@ https://images.example.com/17941740331294347.jpg
 3. 当前首版可先上传 JPEG；图片总量很小，后续再接入格式协商。
 4. 展示图可以公开；原件 bucket 必须保持私有，禁用列表浏览和公开写入。
 
-当前 `media` 约 4.9MB；这批方图作为 MVP 的 JPEG 展示图已经足够轻，先不要为了它引入图库 SaaS、CMS 或付费图片 API。
+当前 14 件均使用具有固有宽高记录的 JPEG 展示衍生图。发布前逐一确认人物内容风险，只向公开存储上传 `content/artworks.ts` 中列出的 key；不要批量上传整个本地 `media/` 目录。

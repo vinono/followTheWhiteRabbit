@@ -28,6 +28,11 @@ describe("Exhibition visitor flow", () => {
   it("keeps the White Rabbit as the only ordinary-motion forward cue", () => {
     render(<Exhibition />);
 
+    const currentArtwork = screen.getByAltText(
+      "一名女子站在地铁车门旁，望向玻璃中的倒影",
+    );
+    expect(currentArtwork.getAttribute("width")).toBe("1080");
+    expect(currentArtwork.getAttribute("height")).toBe("1080");
     expect(screen.queryByRole("button", { name: "Next artwork" })).toBeNull();
 
     fireEvent.keyDown(window, { key: "ArrowRight" });
@@ -35,6 +40,16 @@ describe("Exhibition visitor flow", () => {
 
     fireEvent.keyDown(window, { key: "ArrowLeft" });
     expect(screen.getByLabelText("Artwork 1 of 14")).toBeTruthy();
+  });
+
+  it("defers Dock thumbnails and keeps them decorative", () => {
+    render(<Exhibition />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Browse artworks" }));
+    const firstThumbnail = screen.getByRole("button", { name: "View artwork 1" }).querySelector("img");
+
+    expect(firstThumbnail?.getAttribute("loading")).toBe("lazy");
+    expect(firstThumbnail?.getAttribute("alt")).toBe("");
   });
 
   it("announces the rabbit after the full viewing rhythm without stealing focus", async () => {
@@ -94,18 +109,18 @@ describe("Exhibition visitor flow", () => {
   it("shows the final artwork until the visitor ends the exhibition, then restarts at the first artwork", async () => {
     render(<Exhibition />);
 
-    expect(screen.getByAltText("一名乘客从地铁通道向前走去")).toBeTruthy();
+    expect(screen.getByAltText("一名女子站在地铁车门旁，望向玻璃中的倒影")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Browse artworks" }));
     fireEvent.click(screen.getByRole("button", { name: "View artwork 14" }));
     await advanceExhibitionTime(700);
 
-    expect(screen.getByAltText("两名乘客在车厢里相对而立")).toBeTruthy();
+    expect(screen.getByAltText("拥挤的车厢里，两名女子隔着人群相向站立")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "结束展览" }));
 
     expect(screen.getByRole("heading", { name: /rabbit has gone deeper/i })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Restart" }));
 
-    expect(screen.getByAltText("一名乘客从地铁通道向前走去")).toBeTruthy();
+    expect(screen.getByAltText("一名女子站在地铁车门旁，望向玻璃中的倒影")).toBeTruthy();
   });
 });

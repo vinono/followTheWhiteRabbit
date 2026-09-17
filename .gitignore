@@ -3,7 +3,7 @@ node_modules/
 out/
 *.tsbuildinfo
 
-# Local original photographs. These are deliberately never committed.
+# Local exhibition derivatives. Source originals live outside this project.
 media/*
 !media/README.md
 
