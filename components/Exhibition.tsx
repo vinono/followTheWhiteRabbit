@@ -16,6 +16,7 @@ export function Exhibition() {
     activeEdge,
     onRabbitClick,
     gotoArtwork,
+    endExhibition,
     restartExhibition,
   } = useExhibitionFSM(isDockOpen || isAboutOpen);
 
@@ -90,6 +91,11 @@ export function Exhibition() {
               <span className="collectionName">
                 {artwork.title ? artwork.title : exhibition.collectionLabel}
               </span>
+              {status === "VIEWING_FINAL_ARTWORK" && (
+                <button className="endExhibitionBtn" onClick={endExhibition}>
+                  结束展览
+                </button>
+              )}
             </div>
           </>
         )}

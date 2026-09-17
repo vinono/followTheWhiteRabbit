@@ -85,6 +85,23 @@ button {
   font-size: 0.75rem;
 }
 
+.endExhibitionBtn {
+  justify-self: start;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+}
+
+.endExhibitionBtn:hover,
+.endExhibitionBtn:focus-visible {
+  background: var(--ink);
+  color: #ffffff;
+}
+
 /* Side Navigation */
 .sideNav {
   position: fixed;

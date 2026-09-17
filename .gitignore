@@ -1,6 +1,7 @@
 node_modules/
 .next/
 out/
+*.tsbuildinfo
 
 # Local original photographs. These are deliberately never committed.
 media/*

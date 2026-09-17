@@ -4,8 +4,10 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Final artwork 在进入结尾页前始终可见，并提供明确的“结束展览”动作。
-- [ ] Restart 返回第一件作品；重复触发或陈旧事件不会跳过作品或产生重复切换。
-- [ ] 通过 Exhibition 主接缝验证首件、末件、结束页与 Restart 的可见行为。
+- [x] Final artwork 在进入结尾页前始终可见，并提供明确的“结束展览”动作。
+- [x] Restart 返回第一件作品；重复触发或陈旧事件不会跳过作品或产生重复切换。
+- [x] 通过 Exhibition 主接缝验证首件、末件、结束页与 Restart 的可见行为。
+
+**Implementation note:** Mounted Exhibition tests and a real Chrome interaction verify the state flow. The first configured media key currently returns 404 locally; public asset availability remains part of ticket 05 and is not resolved by this state-flow ticket.
