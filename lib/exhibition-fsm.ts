@@ -105,7 +105,7 @@ export function transitionExhibition(
   }
 }
 
-export function useExhibitionFSM(isOverlayOpen: boolean) {
+export function useExhibitionFSM(isOverlayOpen: boolean, prefersReducedMotion: boolean = false) {
   const [state, dispatch] = useReducer(transitionExhibition, {
     current: 0,
     status: "ENTERING_ARTWORK",
@@ -152,18 +152,23 @@ export function useExhibitionFSM(isOverlayOpen: boolean) {
     }
   }, [status, current, generation]);
 
-  // Hide rabbit and reset to waiting phase when overlay opens
+  // Hide rabbit and reset to waiting phase when overlay opens or reduced motion is active
   useEffect(() => {
-    if (isOverlayOpen && status === "RABBIT_VISIBLE") {
+    if ((isOverlayOpen || prefersReducedMotion) && status === "RABBIT_VISIBLE") {
       dispatch({ type: "PAUSE_TO_WAITING", generation });
     }
-  }, [isOverlayOpen, status, generation]);
+  }, [isOverlayOpen, prefersReducedMotion, status, generation]);
 
   // Handle Dwell Timer and Rabbit Spawning
   useEffect(() => {
     clearRabbitScheduleTimers();
 
-    if (isOverlayOpen || status === "ENDING" || status === "VIEWING_FINAL_ARTWORK") {
+    if (
+      prefersReducedMotion ||
+      isOverlayOpen ||
+      status === "ENDING" ||
+      status === "VIEWING_FINAL_ARTWORK"
+    ) {
       return;
     }
 
@@ -204,7 +209,7 @@ export function useExhibitionFSM(isOverlayOpen: boolean) {
       }
       clearRabbitScheduleTimers();
     };
-  }, [status, current, generation, isOverlayOpen, clearRabbitScheduleTimers]);
+  }, [status, current, generation, isOverlayOpen, prefersReducedMotion, clearRabbitScheduleTimers]);
 
   useEffect(() => {
     if (status !== "RABBIT_EXITING") {

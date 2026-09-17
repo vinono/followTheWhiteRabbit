@@ -5,10 +5,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { preload } from "react-dom";
 import { artworks, exhibition, getArtworkUrl } from "../content/artworks";
 import { useExhibitionFSM } from "../lib/exhibition-fsm";
+import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { WhiteRabbit } from "./WhiteRabbit";
 import { EndScreen } from "./EndScreen";
 
-export function Exhibition() {
+interface ExhibitionProps {
+  prefersReducedMotion?: boolean;
+}
+
+export function Exhibition({
+  prefersReducedMotion: prefersReducedMotionProp,
+}: ExhibitionProps = {}) {
+  const detectedReducedMotion = usePrefersReducedMotion();
+  const prefersReducedMotion = prefersReducedMotionProp ?? detectedReducedMotion;
+
   const [isDockOpen, setIsDockOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
 
@@ -26,7 +36,7 @@ export function Exhibition() {
     gotoArtwork,
     endExhibition,
     restartExhibition,
-  } = useExhibitionFSM(isDockOpen || isAboutOpen);
+  } = useExhibitionFSM(isDockOpen || isAboutOpen, prefersReducedMotion);
 
   const artwork = artworks[current];
   const nextArtwork = artworks[current + 1];
@@ -188,18 +198,33 @@ export function Exhibition() {
         )}
       </section>
 
-      {/* White Rabbit Interactive Trigger (hidden when Dock or About is open) */}
-      {activeEdge && !isEnding && !isDockOpen && !isAboutOpen && (
+      {/* White Rabbit Interactive Trigger (hidden when Dock, About, or reduced motion is active) */}
+      {!prefersReducedMotion && activeEdge && !isEnding && !isDockOpen && !isAboutOpen && (
         <WhiteRabbit
           edge={activeEdge}
           isExiting={status === "RABBIT_EXITING"}
           onClick={onRabbitClick}
         />
       )}
-      {status === "RABBIT_VISIBLE" && !isDockOpen && !isAboutOpen && (
+      {!prefersReducedMotion && status === "RABBIT_VISIBLE" && !isDockOpen && !isAboutOpen && (
         <p className="srOnly" role="status">
           White Rabbit is ready to follow.
         </p>
+      )}
+
+      {/* Reduced-motion direct next button */}
+      {prefersReducedMotion && !isEnding && current < artworks.length - 1 && (
+        <button
+          className="reducedMotionNext"
+          onClick={() => gotoArtwork(current + 1)}
+          aria-label="Next artwork"
+          title="Next artwork"
+        >
+          <span>Next</span>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M6 3l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       )}
 
       {/* Gallery Dock Trigger */}

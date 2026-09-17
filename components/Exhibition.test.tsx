@@ -238,4 +238,74 @@ describe("Exhibition visitor flow", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(aboutButton);
   });
+
+  describe("reduced-motion mode alternative path", () => {
+    it("does not schedule White Rabbit, provides direct Next button for non-final artworks, and preserves final artwork ending and restart", async () => {
+      render(<Exhibition prefersReducedMotion={true} />);
+
+      // Non-final artwork has direct Next button
+      const nextButton = screen.getByRole("button", { name: "Next artwork" });
+      expect(nextButton).toBeTruthy();
+
+      // Advance past entrance and dwell times
+      await advanceExhibitionTime(700);
+      await advanceExhibitionTime(6000);
+      await advanceExhibitionTime(4000);
+
+      // White Rabbit must NOT be scheduled or rendered
+      expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+      expect(screen.queryByRole("status")).toBeNull();
+
+      // Advancing with direct Next button
+      fireEvent.click(nextButton);
+      await advanceExhibitionTime(700);
+      expect(screen.getByLabelText("Artwork 2 of 14")).toBeTruthy();
+
+      // Use Dock to jump to final artwork (Artwork 14)
+      fireEvent.click(screen.getByRole("button", { name: "Browse artworks" }));
+      fireEvent.click(screen.getByRole("button", { name: "View artwork 14" }));
+      await advanceExhibitionTime(700);
+
+      // Final artwork: Next button is NOT displayed
+      expect(screen.queryByRole("button", { name: "Next artwork" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+
+      // Ending flow: 结束展览 button is available
+      const endBtn = screen.getByRole("button", { name: "结束展览" });
+      expect(endBtn).toBeTruthy();
+
+      fireEvent.click(endBtn);
+      expect(screen.getByRole("heading", { name: /rabbit has gone deeper/i })).toBeTruthy();
+
+      // Restart flow
+      fireEvent.click(screen.getByRole("button", { name: "Restart" }));
+      await advanceExhibitionTime(700);
+      expect(screen.getByLabelText("Artwork 1 of 14")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Next artwork" })).toBeTruthy();
+    });
+
+    it("respects controlled prefers-reduced-motion media query environment", () => {
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query === "(prefers-reduced-motion: reduce)",
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      try {
+        render(<Exhibition />);
+
+        // Should automatically detect reduced motion
+        expect(screen.getByRole("button", { name: "Next artwork" })).toBeTruthy();
+        expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    });
+  });
 });
