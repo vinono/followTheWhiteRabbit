@@ -31,3 +31,4 @@ function getServerSnapshot(): boolean {
 export function usePrefersReducedMotion(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
+
