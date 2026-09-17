@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { preload } from "react-dom";
 import { artworks, exhibition, getArtworkUrl } from "../content/artworks";
 import { useExhibitionFSM } from "../lib/exhibition-fsm";
@@ -11,6 +11,12 @@ import { EndScreen } from "./EndScreen";
 export function Exhibition() {
   const [isDockOpen, setIsDockOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+
+  const dockRef = useRef<HTMLElement | null>(null);
+  const dockTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const aboutTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const aboutDialogRef = useRef<HTMLElement | null>(null);
+  const aboutCloseButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const {
     current,
@@ -30,16 +36,88 @@ export function Exhibition() {
     preload(getArtworkUrl(nextArtwork), { as: "image", fetchPriority: "low" });
   }
 
+  const closeAbout = useCallback(() => {
+    setIsAboutOpen(false);
+    aboutTriggerRef.current?.focus();
+  }, []);
+
+  const openAbout = useCallback(() => {
+    setIsAboutOpen(true);
+  }, []);
+
+  const closeDock = useCallback(() => {
+    setIsDockOpen(false);
+    dockTriggerRef.current?.focus();
+  }, []);
+
+  // Handle Escape key for overlays
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setIsDockOpen(false);
-        setIsAboutOpen(false);
+        if (isAboutOpen) {
+          closeAbout();
+        }
+        if (isDockOpen) {
+          closeDock();
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [isAboutOpen, isDockOpen, closeAbout, closeDock]);
+
+  // Trap focus inside About modal when open
+  useEffect(() => {
+    if (!isAboutOpen) return;
+
+    aboutCloseButtonRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !aboutDialogRef.current) return;
+
+      const focusableElements = aboutDialogRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusableElements.length === 0) return;
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey) {
+        if (document.activeElement === firstElement) {
+          event.preventDefault();
+          lastElement.focus();
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          event.preventDefault();
+          firstElement.focus();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isAboutOpen]);
+
+  // Outside pointer click listener to close Dock
+  useEffect(() => {
+    if (!isDockOpen) return;
+
+    const onPointerDown = (event: PointerEvent | MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        dockRef.current &&
+        !dockRef.current.contains(target) &&
+        !dockTriggerRef.current?.contains(target)
+      ) {
+        setIsDockOpen(false);
+      }
+    };
+
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, [isDockOpen]);
 
   const chooseArtwork = (index: number) => {
     gotoArtwork(index);
@@ -60,7 +138,13 @@ export function Exhibition() {
           </svg>
           <span className="sideNavLabel">Home</span>
         </button>
-        <button className="sideNavItem" onClick={() => setIsAboutOpen(true)}>
+        <button
+          ref={aboutTriggerRef}
+          className="sideNavItem"
+          onClick={openAbout}
+          aria-haspopup="dialog"
+          aria-expanded={isAboutOpen}
+        >
           <svg className="dropIcon" viewBox="0 0 20 26" aria-hidden="true">
             <path d="M10 1.5C8 5.8 3 10.2 3 15.1a7 7 0 0 0 14 0C17 10.2 12 5.8 10 1.5Z" />
           </svg>
@@ -104,15 +188,15 @@ export function Exhibition() {
         )}
       </section>
 
-      {/* White Rabbit Interactive Trigger */}
-      {activeEdge && !isEnding && (
+      {/* White Rabbit Interactive Trigger (hidden when Dock or About is open) */}
+      {activeEdge && !isEnding && !isDockOpen && !isAboutOpen && (
         <WhiteRabbit
           edge={activeEdge}
           isExiting={status === "RABBIT_EXITING"}
           onClick={onRabbitClick}
         />
       )}
-      {status === "RABBIT_VISIBLE" && (
+      {status === "RABBIT_VISIBLE" && !isDockOpen && !isAboutOpen && (
         <p className="srOnly" role="status">
           White Rabbit is ready to follow.
         </p>
@@ -120,6 +204,7 @@ export function Exhibition() {
 
       {/* Gallery Dock Trigger */}
       <button
+        ref={dockTriggerRef}
         className="dockTrigger"
         onClick={() => setIsDockOpen((open) => !open)}
         aria-expanded={isDockOpen}
@@ -130,47 +215,58 @@ export function Exhibition() {
 
       {/* Gallery Dock */}
       {isDockOpen && (
-        <section id="gallery-dock" className="dock" aria-label="Browse artworks">
-          <div className="dockHeader">
-            <span>All works</span>
-            <span>{artworks.length} photographs</span>
-          </div>
-          <div className="thumbRail">
-            {artworks.map((item, index) => (
-              <button
-                className={`thumbnail ${index === current ? "isCurrent" : ""}`}
-                key={item.file}
-                onClick={() => chooseArtwork(index)}
-                aria-label={`View artwork ${index + 1}`}
-              >
-                <Image
-                  src={getArtworkUrl(item)}
-                  alt=""
-                  width={item.width}
-                  height={item.height}
-                  loading="lazy"
-                  sizes="84px"
-                />
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+        <>
+          <div className="dockBackdrop" onClick={closeDock} aria-hidden="true" />
+          <section
+            id="gallery-dock"
+            ref={dockRef}
+            className="dock"
+            aria-label="Browse artworks"
+          >
+            <div className="dockHeader">
+              <span>All works</span>
+              <span>{artworks.length} photographs</span>
+            </div>
+            <div className="thumbRail">
+              {artworks.map((item, index) => (
+                <button
+                  className={`thumbnail ${index === current ? "isCurrent" : ""}`}
+                  key={item.file}
+                  onClick={() => chooseArtwork(index)}
+                  aria-label={`View artwork ${index + 1}`}
+                  aria-current={index === current ? "true" : undefined}
+                >
+                  <Image
+                    src={getArtworkUrl(item)}
+                    alt=""
+                    width={item.width}
+                    height={item.height}
+                    loading="lazy"
+                    sizes="84px"
+                  />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </>
       )}
 
       {/* About Overlay */}
       {isAboutOpen && (
         <section
+          ref={aboutDialogRef}
           className="aboutBackdrop"
           role="dialog"
           aria-modal="true"
           aria-labelledby="about-title"
-          onMouseDown={() => setIsAboutOpen(false)}
+          onMouseDown={closeAbout}
         >
           <article className="about" onMouseDown={(event) => event.stopPropagation()}>
             <button
+              ref={aboutCloseButtonRef}
               className="close"
-              onClick={() => setIsAboutOpen(false)}
+              onClick={closeAbout}
               aria-label="Close about"
             >
               ×

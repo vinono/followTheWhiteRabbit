@@ -18,6 +18,7 @@ export type ExhibitionAction =
   | { type: "CLICK_RABBIT" }
   | { type: "FINISH_EXIT"; generation: number }
   | { type: "GOTO_ARTWORK"; index: number }
+  | { type: "PAUSE_TO_WAITING"; generation: number }
   | { type: "END_EXHIBITION" }
   | { type: "RESTART" };
 
@@ -84,6 +85,12 @@ export function transitionExhibition(
     case "GOTO_ARTWORK":
       return enterArtwork(state, action.index);
 
+    case "PAUSE_TO_WAITING":
+      if (state.status === "RABBIT_VISIBLE") {
+        return { ...state, status: "WAITING_FOR_RABBIT", activeEdge: null };
+      }
+      return state;
+
     case "END_EXHIBITION":
       if (state.status === "VIEWING_FINAL_ARTWORK") {
         return { ...state, status: "ENDING", activeEdge: null };
@@ -112,6 +119,13 @@ export function useExhibitionFSM(isOverlayOpen: boolean) {
   const randomTimerRef = useRef<NodeJS.Timeout | null>(null);
   const exitTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastEdgeRef = useRef<RabbitEdge | null>(null);
+  const dwellRemainingRef = useRef<number>(DWELL_TIME_MS);
+  const dwellStartTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    dwellRemainingRef.current = DWELL_TIME_MS;
+    dwellStartTimeRef.current = null;
+  }, [generation]);
 
   const clearRabbitScheduleTimers = useCallback(() => {
     if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
@@ -124,6 +138,8 @@ export function useExhibitionFSM(isOverlayOpen: boolean) {
     clearRabbitScheduleTimers();
     if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
     exitTimerRef.current = null;
+    dwellRemainingRef.current = DWELL_TIME_MS;
+    dwellStartTimeRef.current = null;
   }, [clearRabbitScheduleTimers]);
 
   // Handle ENTERING_ARTWORK -> VIEWING transition
@@ -136,18 +152,29 @@ export function useExhibitionFSM(isOverlayOpen: boolean) {
     }
   }, [status, current, generation]);
 
+  // Hide rabbit and reset to waiting phase when overlay opens
+  useEffect(() => {
+    if (isOverlayOpen && status === "RABBIT_VISIBLE") {
+      dispatch({ type: "PAUSE_TO_WAITING", generation });
+    }
+  }, [isOverlayOpen, status, generation]);
+
   // Handle Dwell Timer and Rabbit Spawning
   useEffect(() => {
     clearRabbitScheduleTimers();
 
-    if (isOverlayOpen || status === "ENDING") {
+    if (isOverlayOpen || status === "ENDING" || status === "VIEWING_FINAL_ARTWORK") {
       return;
     }
 
     if (status === "VIEWING") {
+      dwellStartTimeRef.current = Date.now();
+      const delay = Math.max(0, dwellRemainingRef.current);
       dwellTimerRef.current = setTimeout(() => {
+        dwellRemainingRef.current = 0;
+        dwellStartTimeRef.current = null;
         dispatch({ type: "DWELL_TIMEOUT", generation });
-      }, DWELL_TIME_MS);
+      }, delay);
     } else if (status === "WAITING_FOR_RABBIT") {
       const currentArtwork = artworks[current];
       const allowed = currentArtwork?.allowedEdges?.length
@@ -169,7 +196,14 @@ export function useExhibitionFSM(isOverlayOpen: boolean) {
       }, randomDelay);
     }
 
-    return () => clearRabbitScheduleTimers();
+    return () => {
+      if (dwellStartTimeRef.current !== null) {
+        const elapsed = Date.now() - dwellStartTimeRef.current;
+        dwellRemainingRef.current = Math.max(0, dwellRemainingRef.current - elapsed);
+        dwellStartTimeRef.current = null;
+      }
+      clearRabbitScheduleTimers();
+    };
   }, [status, current, generation, isOverlayOpen, clearRabbitScheduleTimers]);
 
   useEffect(() => {

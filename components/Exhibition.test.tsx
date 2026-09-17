@@ -123,4 +123,119 @@ describe("Exhibition visitor flow", () => {
 
     expect(screen.getByAltText("一名女子站在地铁车门旁，望向玻璃中的倒影")).toBeTruthy();
   });
+
+  it("closes the Dock via Escape key and returns focus to the dock trigger", () => {
+    render(<Exhibition />);
+
+    const dockTrigger = screen.getByRole("button", { name: "Browse artworks" });
+    fireEvent.click(dockTrigger);
+    expect(screen.getByRole("region", { name: "Browse artworks" })).toBeTruthy();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("region", { name: "Browse artworks" })).toBeNull();
+    expect(document.activeElement).toBe(dockTrigger);
+  });
+
+  it("closes the Dock when clicking the backdrop", () => {
+    const { container } = render(<Exhibition />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Browse artworks" }));
+    expect(screen.getByRole("region", { name: "Browse artworks" })).toBeTruthy();
+
+    const backdrop = container.querySelector(".dockBackdrop");
+    expect(backdrop).toBeTruthy();
+    fireEvent.click(backdrop!);
+
+    expect(screen.queryByRole("region", { name: "Browse artworks" })).toBeNull();
+  });
+
+  it("freezes the dwell viewing rhythm while About is open and resumes remaining dwell on close", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    render(<Exhibition />);
+
+    // Complete entrance (700ms)
+    await advanceExhibitionTime(700);
+
+    // Dwell 2000ms out of 6000ms
+    await advanceExhibitionTime(2000);
+
+    // Open About
+    fireEvent.click(screen.getByRole("button", { name: "About" }));
+    expect(screen.getByRole("dialog", { name: /Find the White Rabbit/i })).toBeTruthy();
+
+    // Advance 15 seconds while reading About
+    await advanceExhibitionTime(15000);
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+
+    // Close About via Escape
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    // Remaining dwell is 4000ms: advance 3999ms -> still viewing, no rabbit
+    await advanceExhibitionTime(3999);
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+
+    // Advance 1ms (completes dwell) + 1999ms of 2000ms random wait -> still no rabbit
+    await advanceExhibitionTime(1);
+    await advanceExhibitionTime(1999);
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+
+    // Advance remaining 1ms -> rabbit appears!
+    await advanceExhibitionTime(1);
+    expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
+  });
+
+  it("hides a visible rabbit when Dock opens, and resumes from waiting phase after closing", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    render(<Exhibition />);
+
+    // Wait until rabbit is visible
+    await revealRabbit(2000);
+    expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
+
+    // Open Dock
+    fireEvent.click(screen.getByRole("button", { name: "Browse artworks" }));
+    expect(screen.getByRole("region", { name: "Browse artworks" })).toBeTruthy();
+
+    // White Rabbit must be hidden
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+
+    // Close Dock
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("region", { name: "Browse artworks" })).toBeNull();
+
+    // Rabbit does not reappear immediately (it resumes from waiting phase)
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+
+    // Advance 1999ms of 2000ms random wait
+    await advanceExhibitionTime(1999);
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+
+    // Advance 1ms -> rabbit reappears!
+    await advanceExhibitionTime(1);
+    expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
+  });
+
+  it("traps focus inside About modal and returns focus to About button upon closing", async () => {
+    render(<Exhibition />);
+
+    const aboutButton = screen.getByRole("button", { name: "About" });
+    aboutButton.focus();
+    fireEvent.click(aboutButton);
+
+    const closeButton = screen.getByRole("button", { name: "Close about" });
+    expect(document.activeElement).toBe(closeButton);
+
+    // Tab key inside modal loops focus
+    fireEvent.keyDown(window, { key: "Tab" });
+    expect(document.activeElement).toBe(closeButton);
+
+    fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(closeButton);
+
+    // Close About via close button
+    fireEvent.click(closeButton);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(aboutButton);
+  });
 });

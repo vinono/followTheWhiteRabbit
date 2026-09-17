@@ -74,4 +74,41 @@ describe("exhibition progression invariants", () => {
     expect(exitingRabbit.status).toBe("RABBIT_EXITING");
     expect(afterRepeatedActivation).toEqual(exitingRabbit);
   });
+
+  it("resets a visible rabbit back to waiting when paused", () => {
+    const visibleRabbit = {
+      current: 3,
+      status: "RABBIT_VISIBLE" as const,
+      activeEdge: "top" as const,
+      generation: 5,
+    };
+
+    const paused = transitionExhibition(visibleRabbit, {
+      type: "PAUSE_TO_WAITING",
+      generation: 5,
+    });
+
+    expect(paused).toEqual({
+      current: 3,
+      status: "WAITING_FOR_RABBIT",
+      activeEdge: null,
+      generation: 5,
+    });
+  });
+
+  it("ignores PAUSE_TO_WAITING if not in RABBIT_VISIBLE state", () => {
+    const viewingArtwork = {
+      current: 2,
+      status: "VIEWING" as const,
+      activeEdge: null,
+      generation: 4,
+    };
+
+    const result = transitionExhibition(viewingArtwork, {
+      type: "PAUSE_TO_WAITING",
+      generation: 4,
+    });
+
+    expect(result).toEqual(viewingArtwork);
+  });
 });
