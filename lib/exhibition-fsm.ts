@@ -12,11 +12,11 @@ export type ExhibitionState =
   | "ENDING";
 
 export type ExhibitionAction =
-  | { type: "FINISH_ENTERING"; session: number }
-  | { type: "DWELL_TIMEOUT"; session: number }
-  | { type: "SPAWN_RABBIT"; edge: RabbitEdge; session: number }
+  | { type: "FINISH_ENTERING"; generation: number }
+  | { type: "DWELL_TIMEOUT"; generation: number }
+  | { type: "SPAWN_RABBIT"; edge: RabbitEdge; generation: number }
   | { type: "CLICK_RABBIT" }
-  | { type: "FINISH_EXIT"; session: number }
+  | { type: "FINISH_EXIT"; generation: number }
   | { type: "GOTO_ARTWORK"; index: number }
   | { type: "END_EXHIBITION" }
   | { type: "RESTART" };
@@ -25,7 +25,7 @@ export interface ExhibitionModel {
   current: number;
   status: ExhibitionState;
   activeEdge: RabbitEdge | null;
-  session: number;
+  generation: number;
 }
 
 const DWELL_TIME_MS = 6000;
@@ -33,18 +33,26 @@ const MIN_RANDOM_WAIT_MS = 2000;
 const MAX_RANDOM_WAIT_MS = 4000;
 const RABBIT_EXIT_MS = 300;
 
+function enterArtwork(state: ExhibitionModel, index: number): ExhibitionModel {
+  return {
+    current: Math.max(0, Math.min(index, artworks.length - 1)),
+    status: "ENTERING_ARTWORK",
+    activeEdge: null,
+    generation: state.generation + 1,
+  };
+}
+
 export function transitionExhibition(
   state: ExhibitionModel,
   action: ExhibitionAction,
-  artworkCount = artworks.length,
 ): ExhibitionModel {
-  if ("session" in action && action.session !== state.session) {
+  if ("generation" in action && action.generation !== state.generation) {
     return state;
   }
 
   switch (action.type) {
     case "FINISH_ENTERING":
-      if (state.current >= artworkCount - 1) {
+      if (state.current >= artworks.length - 1) {
         return { ...state, status: "VIEWING_FINAL_ARTWORK", activeEdge: null };
       }
       return { ...state, status: "VIEWING", activeEdge: null };
@@ -69,23 +77,12 @@ export function transitionExhibition(
 
     case "FINISH_EXIT":
       if (state.status === "RABBIT_EXITING") {
-        const nextIndex = Math.min(state.current + 1, artworkCount - 1);
-        return {
-          current: nextIndex,
-          status: "ENTERING_ARTWORK",
-          activeEdge: null,
-          session: state.session + 1,
-        };
+        return enterArtwork(state, state.current + 1);
       }
       return state;
 
     case "GOTO_ARTWORK":
-      return {
-        current: Math.max(0, Math.min(action.index, artworkCount - 1)),
-        status: "ENTERING_ARTWORK",
-        activeEdge: null,
-        session: state.session + 1,
-      };
+      return enterArtwork(state, action.index);
 
     case "END_EXHIBITION":
       if (state.status === "VIEWING_FINAL_ARTWORK") {
@@ -94,59 +91,54 @@ export function transitionExhibition(
       return state;
 
     case "RESTART":
-      return {
-        current: 0,
-        status: "ENTERING_ARTWORK",
-        activeEdge: null,
-        session: state.session + 1,
-      };
+      return enterArtwork(state, 0);
 
     default:
       return state;
   }
 }
 
-function exhibitionReducer(state: ExhibitionModel, action: ExhibitionAction) {
-  return transitionExhibition(state, action);
-}
-
 export function useExhibitionFSM(isOverlayOpen: boolean) {
-  const [state, dispatch] = useReducer(exhibitionReducer, {
+  const [state, dispatch] = useReducer(transitionExhibition, {
     current: 0,
     status: "ENTERING_ARTWORK",
     activeEdge: null,
-    session: 0,
+    generation: 0,
   });
 
-  const { current, status, activeEdge, session } = state;
+  const { current, status, activeEdge, generation } = state;
 
   const dwellTimerRef = useRef<NodeJS.Timeout | null>(null);
   const randomTimerRef = useRef<NodeJS.Timeout | null>(null);
   const exitTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastEdgeRef = useRef<RabbitEdge | null>(null);
 
-  const clearAllTimers = useCallback(() => {
+  const clearRabbitScheduleTimers = useCallback(() => {
     if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
     if (randomTimerRef.current) clearTimeout(randomTimerRef.current);
-    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
     dwellTimerRef.current = null;
     randomTimerRef.current = null;
-    exitTimerRef.current = null;
   }, []);
+
+  const clearAllTimers = useCallback(() => {
+    clearRabbitScheduleTimers();
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    exitTimerRef.current = null;
+  }, [clearRabbitScheduleTimers]);
 
   // Handle ENTERING_ARTWORK -> VIEWING transition
   useEffect(() => {
     if (status === "ENTERING_ARTWORK") {
       const enterTimer = setTimeout(() => {
-        dispatch({ type: "FINISH_ENTERING", session });
+        dispatch({ type: "FINISH_ENTERING", generation });
       }, 700);
       return () => clearTimeout(enterTimer);
     }
-  }, [status, current, session]);
+  }, [status, current, generation]);
 
   // Handle Dwell Timer and Rabbit Spawning
   useEffect(() => {
-    clearAllTimers();
+    clearRabbitScheduleTimers();
 
     if (isOverlayOpen || status === "ENDING") {
       return;
@@ -154,7 +146,7 @@ export function useExhibitionFSM(isOverlayOpen: boolean) {
 
     if (status === "VIEWING") {
       dwellTimerRef.current = setTimeout(() => {
-        dispatch({ type: "DWELL_TIMEOUT", session });
+        dispatch({ type: "DWELL_TIMEOUT", generation });
       }, DWELL_TIME_MS);
     } else if (status === "WAITING_FOR_RABBIT") {
       const currentArtwork = artworks[current];
@@ -173,22 +165,34 @@ export function useExhibitionFSM(isOverlayOpen: boolean) {
         Math.floor(Math.random() * (MAX_RANDOM_WAIT_MS - MIN_RANDOM_WAIT_MS));
 
       randomTimerRef.current = setTimeout(() => {
-        dispatch({ type: "SPAWN_RABBIT", edge: chosenEdge, session });
+        dispatch({ type: "SPAWN_RABBIT", edge: chosenEdge, generation });
       }, randomDelay);
     }
 
-    return () => clearAllTimers();
-  }, [status, current, session, isOverlayOpen, clearAllTimers]);
+    return () => clearRabbitScheduleTimers();
+  }, [status, current, generation, isOverlayOpen, clearRabbitScheduleTimers]);
+
+  useEffect(() => {
+    if (status !== "RABBIT_EXITING") {
+      return;
+    }
+
+    exitTimerRef.current = setTimeout(() => {
+      dispatch({ type: "FINISH_EXIT", generation });
+    }, RABBIT_EXIT_MS);
+
+    return () => {
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = null;
+    };
+  }, [status, generation]);
 
   // Handle Rabbit Click & Exit timer
   const onRabbitClick = useCallback(() => {
     if (state.status === "RABBIT_VISIBLE") {
       dispatch({ type: "CLICK_RABBIT" });
-      exitTimerRef.current = setTimeout(() => {
-        dispatch({ type: "FINISH_EXIT", session });
-      }, RABBIT_EXIT_MS);
     }
-  }, [state.status, session]);
+  }, [state.status]);
 
   const gotoArtwork = useCallback(
     (index: number) => {

@@ -7,23 +7,20 @@ describe("exhibition progression invariants", () => {
       current: 12,
       status: "RABBIT_EXITING" as const,
       activeEdge: "left" as const,
-      session: 3,
+      generation: 3,
     };
 
     const enteringFinalArtwork = transitionExhibition(
       penultimateArtwork,
-      { type: "FINISH_EXIT", session: 3 },
-      14,
+      { type: "FINISH_EXIT", generation: 3 },
     );
     const viewingFinalArtwork = transitionExhibition(
       enteringFinalArtwork,
-      { type: "FINISH_ENTERING", session: 4 },
-      14,
+      { type: "FINISH_ENTERING", generation: 4 },
     );
     const ending = transitionExhibition(
       viewingFinalArtwork,
       { type: "END_EXHIBITION" },
-      14,
     );
 
     expect(enteringFinalArtwork.status).toBe("ENTERING_ARTWORK");
@@ -31,30 +28,28 @@ describe("exhibition progression invariants", () => {
     expect(ending.status).toBe("ENDING");
   });
 
-  it("ignores a stale exit event after a newer artwork session has started", () => {
+  it("ignores a stale exit event after a newer artwork generation has started", () => {
     const exitingArtwork = {
       current: 4,
       status: "RABBIT_EXITING" as const,
       activeEdge: "right" as const,
-      session: 8,
+      generation: 8,
     };
 
     const nextArtwork = transitionExhibition(
       exitingArtwork,
-      { type: "FINISH_EXIT", session: 8 },
-      14,
+      { type: "FINISH_EXIT", generation: 8 },
     );
     const afterStaleExit = transitionExhibition(
       nextArtwork,
-      { type: "FINISH_EXIT", session: 8 },
-      14,
+      { type: "FINISH_EXIT", generation: 8 },
     );
 
     expect(nextArtwork).toEqual({
       current: 5,
       status: "ENTERING_ARTWORK",
       activeEdge: null,
-      session: 9,
+      generation: 9,
     });
     expect(afterStaleExit).toEqual(nextArtwork);
   });
@@ -64,18 +59,16 @@ describe("exhibition progression invariants", () => {
       current: 6,
       status: "RABBIT_VISIBLE" as const,
       activeEdge: "bottom" as const,
-      session: 12,
+      generation: 12,
     };
 
     const exitingRabbit = transitionExhibition(
       visibleRabbit,
       { type: "CLICK_RABBIT" },
-      14,
     );
     const afterRepeatedActivation = transitionExhibition(
       exitingRabbit,
       { type: "CLICK_RABBIT" },
-      14,
     );
 
     expect(exitingRabbit.status).toBe("RABBIT_EXITING");

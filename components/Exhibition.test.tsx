@@ -11,6 +11,27 @@ describe("Exhibition final artwork flow", () => {
     vi.useRealTimers();
   });
 
+  it("advances exactly one artwork after the visitor follows the rabbit", async () => {
+    render(<Exhibition />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(700);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(6000);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(4000);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Follow the White Rabbit" }));
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(screen.getByLabelText("Artwork 2 of 14")).toBeTruthy();
+  });
+
   it("shows the final artwork until the visitor ends the exhibition, then restarts at the first artwork", async () => {
     render(<Exhibition />);
 
