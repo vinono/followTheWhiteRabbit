@@ -12,7 +12,7 @@ export type Artwork = {
 
 /** Change this object and the source array below to make a new exhibition. */
 export const exhibition = {
-  title: "Find the White Rabbit",
+  title: "Follow the white rabbit",
   eyebrow: "Exhibition note",
   collectionLabel: "In transit",
   description: "A quiet exhibition of encounters in transit.",
@@ -21,7 +21,6 @@ export const exhibition = {
     "屏幕发亮，车门打开又关闭；有人独自醒着，有人把头靠在另一个人肩上。这些照片没有终点。",
     "请停下来。等待那只白兔出现。",
   ],
-  endMessage: "The rabbit has gone deeper. Will you start again?",
 };
 
 // Files stay in the ignored /media directory. Set NEXT_PUBLIC_MEDIA_BASE_URL in
@@ -46,7 +45,7 @@ const source: Omit<Artwork, "label">[] = [
   { file: "201807/17886990100240451.jpg", alt: "一名戴耳机的长发女子在地铁里低头站立", title: "Inward / 向内", width: 1080, height: 1080, allowedEdges: ["left", "top"] },
   { file: "201807/17966449912043585.jpg", alt: "拥挤的地铁里，一名女子举手握住扶手", title: "Hold / 握住", width: 1080, height: 1080, allowedEdges: ["right", "bottom"] },
   { file: "201807/17882414959241973.jpg", alt: "地铁乘客之间，一只印有文字的白色布袋占据画面中央", title: "Passing Words / 掠过的字", width: 1080, height: 1080, allowedEdges: ["top", "left"] },
-  { file: "17977682125051553.jpg", alt: "拥挤的车厢里，两名女子隔着人群相向站立", title: "Almost Meeting / 几乎相遇", width: 1080, height: 1080, allowedEdges: [] }, // Last artwork, no rabbit
+  { file: "17977682125051553.jpg", alt: "拥挤的车厢里，两名女子隔着人群相向站立", title: "Almost Meeting / 几乎相遇", width: 1080, height: 1080, allowedEdges: ["top", "bottom", "left", "right"] },
 ];
 
 export const artworks: Artwork[] = source.map((artwork, index) => ({

@@ -1,39 +1,47 @@
 "use client";
 
 import Image from "next/image";
-import { RabbitEdge } from "../content/artworks";
+import { type CSSProperties, useSyncExternalStore } from "react";
+import { type RabbitEdge } from "../content/artworks";
 import styles from "./WhiteRabbit.module.css";
 
 interface WhiteRabbitProps {
   edge: RabbitEdge;
+  position: number;
   isExiting: boolean;
   onClick: () => void;
 }
 
-const rabbitAssetByEdge: Record<RabbitEdge, string> = {
-  left: "/rabbit/white-rabbit-left-v1.webp",
-  right: "/rabbit/white-rabbit-right-v1.webp",
-  top: "/rabbit/white-rabbit-top-v1.webp",
-  bottom: "/rabbit/white-rabbit-bottom-v1.webp",
-};
+function subscribeToWidth(callback: () => void) {
+  const query = window.matchMedia("(max-width: 760px)");
+  query.addEventListener("change", callback);
+  return () => query.removeEventListener("change", callback);
+}
+function isNarrow() { return window.matchMedia("(max-width: 760px)").matches; }
+function serverWidth() { return false; }
 
-export function WhiteRabbit({ edge, isExiting, onClick }: WhiteRabbitProps) {
+export function WhiteRabbit({ edge, position, isExiting, onClick }: WhiteRabbitProps) {
+  const narrow = useSyncExternalStore(subscribeToWidth, isNarrow, serverWidth);
+  // Keep the smaller phone cue on a horizontal frame edge, away from the centre.
+  const safeEdge = narrow && (edge === "left" || edge === "right")
+    ? edge === "left" ? "top" : "bottom"
+    : edge;
   return (
     <button
-      className={`whiteRabbit ${styles.rabbitButton} ${styles[edge]} ${
-        isExiting ? styles.exiting : ""
-      }`}
+      className={`${styles.rabbitButton} ${styles[safeEdge]} ${isExiting ? styles.exiting : ""}`}
+      style={{ "--rabbit-position": `${position}%` } as CSSProperties}
       onClick={onClick}
+      disabled={isExiting}
       aria-label="Follow the White Rabbit"
       title="Follow the White Rabbit"
     >
       <Image
         className={styles.asset}
-        src={rabbitAssetByEdge[edge]}
+        src={`/rabbit/white-rabbit-${safeEdge}-v1.webp`}
         alt=""
         width={512}
         height={768}
-        sizes="(max-width: 760px) 130px, 180px"
+        sizes="(max-width: 760px) 76px, 100px"
         draggable={false}
         priority
         unoptimized

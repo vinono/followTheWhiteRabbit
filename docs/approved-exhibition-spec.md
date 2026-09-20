@@ -1,92 +1,81 @@
 # Find the White Rabbit — 已确认实施规格
 
-> 状态：需求已确认，待实施。本文是可发布到 issue tracker 的规格正文；以本文为准的决策覆盖早期 PRD 和技术设计中的冲突表述。
+> 2026-09-19：经逐轮设计讨论确认并授权开发。本文是当前行为的权威规格，覆盖旧 PRD、技术设计及历史任务中关于直达首张、Home/About、末张无兔、Restart 和 reduced-motion 替代 Next 的冲突描述。实现与验证结果见 [开发记录](exhibition-redesign-2026-09-19.md)。
 
-## Problem Statement
+## 1. 展览结构
 
-作为摄影展的创作者，我需要把当前的 14 件原创 JPG 摄影作品呈现为一次有节奏、有明确结尾的单一线上展览，而不是可任意翻页的作品集。现有实现会跳过末件、在普通动效模式中常驻显示 Next 并支持方向键跳转，且 Dock/About 与白兔计时、焦点和层级互相干扰；这破坏了“等待并跟随白兔”的核心叙事，也使 reduced-motion 的替代路径不完整。
+单一线上摄影展，策展顺序保持现有 14 件原创摄影作品。入口为展览序言，随后进入照片，最后进入 END。序言和 END 不计入作品数量，也不出现在作品目录。
 
-## Solution
+```text
+序言画框 → 开始观看 → 照片 01 → … → 照片 14 → END 画框
+                         点击兔子逐张前进          ↓
+                                           解锁底部圆圈
+                                                ↓
+                                        照片目录与自由回看
+```
 
-交付一个以 **Exhibition** 为唯一入口的、策展顺序固定的线上摄影展。普通动效下，观众在每件非末件作品完整淡入后观看 6 秒，随后等待随机 2–4 秒，再通过出现的 **White Rabbit** 自主进入下一件；不存在常驻 Next 或左右方向键直达。最后一件始终先完整展示，观众主动选择“结束展览”后才进入结尾页。
+不再提供顶部或侧面 Home/About 导航、About 弹窗、Next、结束展览按钮或 Restart。普通左右方向键不切换作品。
 
-**Dock**、Home 与 About 是不破坏默认叙事的主动浏览入口。**Reduced-motion mode** 不显示随机白兔，并始终给出清晰的下一件入口。公开内容仅展示序号、标题（如有）、简短中英展览文字与准确 alt；不展示摄影师、地点、年份或器材。首发以 14 件用户拥有版权的 JPG 衍生图验收，并先以 link-only preview 发布。
+## 2. 序言画框
 
-## User Stories
+- 使用与照片一致的细边框、白色内衬与柔和阴影。
+- 框内左对齐：`Exhibition note`、`Follow the white rabbit`、现有三段中文说明、`开始观看` 按钮。不增写作者介绍或联系方式。
+- 未开始前没有兔子，不启动照片观看或兔子计时。
+- 点击开始后进入第一张照片；手机序言随内容增高，允许页面自然滚动，不压缩文字以强塞固定比例。
 
-1. As a visitor, I want to enter directly on the first artwork, so that the site feels like entering an exhibition rather than a marketing landing page.
-2. As a visitor, I want each artwork to preserve its original aspect ratio in a calm exhibition frame, so that no photographic subject is cropped for layout convenience.
-3. As a visitor in White Rabbit mode, I want an artwork to finish entering before its viewing time begins, so that I receive the intended minimum six seconds with the work.
-4. As a visitor in White Rabbit mode, I want the White Rabbit to appear only after a further random two-to-four-second wait, so that the rhythm feels discovered rather than like a timer-driven gallery.
-5. As a visitor, I want the White Rabbit to be the only normal forward cue, so that following it remains the exhibition's narrative action.
-6. As a visitor, I want no persistent Next control in White Rabbit mode, so that I am not invited to bypass the intended pause.
-7. As a keyboard visitor in White Rabbit mode, I want no left/right-arrow artwork skipping, so that keyboard input does not bypass the White Rabbit narrative.
-8. As a keyboard visitor, I want a visible White Rabbit to be reachable by Tab and activatable by Enter or Space, so that I can follow it without a pointer.
-9. As a screen-reader visitor, I want a concise announcement when the White Rabbit becomes available, so that its appearance is not purely visual.
-10. As a visitor, I want the White Rabbit to avoid protected artwork, label, Dock, and navigation areas, so that the photograph remains the focus.
-11. As a visitor, I want consecutive rabbits to avoid using the same permitted edge when alternatives exist, so that the cue retains a sense of discovery.
-12. As a visitor, I want to select an artwork from the Dock, so that I can intentionally revisit or enter a work without turning the exhibition into a conventional grid gallery.
-13. As a touch visitor, I want the Dock rail to support horizontal touch scrolling and usable targets, so that direct browsing works on phones.
-14. As a visitor, I want Dock opening to pause an unfinished rabbit session, so that I do not miss a cue while browsing.
-15. As a visitor, I want an already visible rabbit to disappear when Dock or About opens, so that no cue appears behind or above an overlay.
-16. As a visitor, I want closing Dock or About after a visible rabbit to restart from the random-wait phase, so that the cue is not silently preserved behind a layer.
-17. As a visitor, I want Escape, the Dock trigger, and a Dock blank-area action to close the Dock, so that the rail is easy to dismiss.
-18. As a visitor, I want About to behave as a modal layer with focus contained and restored to its opener on close, so that keyboard context remains predictable.
-19. As a visitor, I want Home and Dock selection to use the same controlled artwork transition, so that no stale rabbit or timer appears on a different artwork.
-20. As a visitor viewing the final artwork, I want to see the complete final work before any ending message, so that the curated sequence has a real conclusion.
-21. As a visitor viewing the final artwork, I want no White Rabbit, so that the rabbit's departure is meaningful.
-22. As a visitor viewing the final artwork, I want an explicit “结束展览” action, so that I decide when to leave the concluding work for the ending screen.
-23. As a visitor on the ending screen, I want a Restart control, so that I can begin the exhibition again from the first artwork.
-24. As a visitor who prefers reduced motion, I want no randomly appearing or moving White Rabbit, so that the exhibition respects my system preference.
-25. As a visitor who prefers reduced motion, I want a clear next-artwork control, so that I can still complete the curated sequence without waiting for a hidden cue.
-26. As a visitor, I want the reduced-motion behavior to be driven by application logic rather than only visual CSS hiding, so that hidden timers and inaccessible state do not remain active.
-27. As a visitor, I want Chinese and English exhibition text presented together in distinct sections, so that both languages are available without a language switcher or route change.
-28. As a visitor, I want public artwork metadata limited to sequence, title where supplied, exhibition text, and accurate alt text, so that the exhibition remains intentionally minimal.
-29. As the exhibition creator, I want photographer name, location, year, and equipment omitted from public display, so that the release respects the approved curatorial boundary.
-30. As the exhibition creator, I want only web-ready JPG derivatives served publicly, so that source originals remain private.
-31. As the exhibition creator, I want image delivery to work locally and through a configured CDN media base URL, so that preview and production use the same artwork keys.
-32. As the exhibition creator, I want the current and next artwork to load efficiently without layout shift, so that the photograph appears promptly and stably.
-33. As the exhibition creator, I want every launch artwork manually reviewed for identifiable or sensitive people before release, so that a concerning image can be removed or made non-identifying.
-34. As the exhibition creator, I want a link-only preview before public indexing or formal domain binding, so that visual and content approval happens before broader release.
-35. As the exhibition creator, I want desktop and mobile browser recordings of the critical flow, so that visual acceptance reflects the actual exhibition rather than only source review.
+## 3. 首遍照片观看
 
-## Implementation Decisions
+1. 图片加载成功后完整入场约 500ms。
+2. 完成入场后驻足 2 秒，再随机等待 0.5–1 秒。
+3. 兔子出现后保持可见、位置不变，直到用户点击。
+4. 点击后离场 200ms，再进入下一张。连点不得跳过作品。
+5. 最后一张也完整遵循这个节奏；只有点击末张兔子才进入 END。
+6. 首遍中途不显示目录圆圈，不允许直接跳过观看。
 
-- The product remains a single **Exhibition**, not a portfolio, CMS, account system, multi-exhibition platform, or landing page.
-- The curated sequence contains 14 **Artwork** entries in the existing approved order. **Final artwork** is a distinct stateful concept: it is visible and interactive before the ending screen, rather than a trigger that immediately renders the ending.
-- All exhibition progression is centralized in one finite-state transition model. It must distinguish entering, viewing, random rabbit wait, rabbit visible, rabbit exit/transition, final-artwork viewing, and ending states. At most one transition request and one relevant timer set may be active at once.
-- A normal non-final artwork follows this behavior: visual entry completes → six-second viewing → random two-to-four-second wait → White Rabbit visible → visitor activation → rabbit exit → next artwork visual entry. The final artwork never creates a rabbit session.
-- Dock and About are overlay states around an artwork state. They freeze remaining unfinished viewing/wait time; if they interrupt a visible rabbit, dismiss it. After their close, an interrupted visible rabbit restarts at random wait, rather than being restored as visible. Artwork changes and overlay changes clean up obsolete timers.
-- **White Rabbit mode** is selected when reduced motion is not requested. It has no persistent next control and does not map ArrowLeft/ArrowRight to previous or next artwork. Direct navigation is confined to explicit Dock and Home actions.
-- **Reduced-motion mode** is a logical branch of the exhibition model, not merely a CSS rule. It suppresses random rabbit scheduling and supplies an explicit accessible next control. The final-artwork and ending rules remain unchanged.
-- The White Rabbit is a named native button that becomes keyboard focusable only when available, does not steal focus on appearance, and produces a short non-disruptive accessibility announcement. Its permitted placement comes from each Artwork's safe-edge configuration and avoids consecutive duplicate edges where another permitted edge exists.
-- The Dock remains a bottom-triggered, horizontal scroll-snap thumbnail rail. It is not a grid. It supports keyboard, pointer, touch, click-to-select, and the agreed closing actions.
-- About is an accessible modal dialog: focus enters a meaningful control, remains within the dialog while open, Escape/backdrop/close dismiss it, and focus returns to the control that opened it.
-- Public **Artwork ownership** is recorded as creator-owned for all 14 MVP works. The content model and visitor UI expose only **Public artwork metadata**: order, optional title, accurate alt, and brief **Bilingual presentation** text. Photographer, location, year, and equipment fields are neither required nor rendered for launch.
-- Public **Exhibition media** consists of optimized JPG derivatives. Private source originals do not enter version control or public storage. Production media delivery uses the configured public media base URL while local development continues through the existing media route.
-- Image rendering uses an optimization-aware image component/loader with known intrinsic dimensions, current/next work preloading, and deferred thumbnail loading. The implementation must preserve the art's real aspect ratio and avoid content layout shift.
-- Motion uses one centralized set of motion tokens and a single animation system for artwork transition, White Rabbit, and Dock. Existing visual intent remains: restrained fades, no exaggerated loops or bounces; reduced motion removes non-essential movement.
-- Documentation describing the application as uninitialized must be corrected to match the existing Next.js implementation, and earlier requirements that conflict with these approved rules must be marked superseded.
+## 4. 画框四周的兔子
 
-## Testing Decisions
+- 定位参照照片画框，不再参照浏览器窗口。
+- 2026-09-20 调整：左、右、下方兔子趴在相框内侧，叠在白色内衬与照片安全边缘上方。顶部单独处理：爪子搭住相框上沿，头和耳朵露在框外，身体藏在框后，减少对照片的遮挡。优先使用允许的安全边，避开主体中心。
+- 每张在允许的安全边缘与边内安全范围选择位置，避开边角、展签与目录；可选边充足时避免连续同边。
+- 手机优先使用画框内的上、下安全边；兔子随画框限制尺寸，调整窗口后仍可见可点击。
+- 首遍等待后出现；完成首遍后回看，图片加载成功即出现，不再强制等待。
+- 不提供“减少动态效果”产品分支：系统偏好不隐藏兔子，不切换为 Next，也不另设设置入口。所有用户均可通过兔子完成同一流程。
+- 使用语义按钮，支持 Tab、Enter、Space 与读屏提示，视觉露出区的触控面积至少约 44×44px。
 
-- The principal acceptance seam is the mounted **Exhibition** experience, exercised with controlled time, explicit media-query settings, and real user actions. Tests assert externally visible visitor behavior and accessible controls, not reducer internals, timer references, CSS class names, or implementation-specific animation details.
-- At that seam, test first artwork entry; six-second dwell plus two-to-four-second rabbit wait; Rabbit activation; no persistent Next or ArrowLeft/ArrowRight shortcut in White Rabbit mode; keyboard activation and announcement; Dock/About interruption and resumption; Dock selection/Home cleanup; final-artwork viewing and explicit ending action; Restart; and reduced-motion direct-next behavior with no rabbit scheduling exposed to the visitor.
-- Keep focused pure state-transition tests only for high-risk invariants that are difficult to observe exhaustively through the mounted experience: final work is not skipped, stale events cannot advance a newer artwork, and overlay interruption follows the agreed resumption rules. These tests specify transition outcomes, not private reducer structure.
-- Use existing lint and production build as baseline static checks. Add the smallest appropriate React test setup only if no existing UI-test seam exists; prefer the single Exhibition seam over component-by-component mocks.
-- Visual acceptance is separate and mandatory: record the critical flow in real desktop and mobile browsers, including standard motion, reduced motion, Dock, About, final artwork, ending, keyboard use, and touch use. Inspect image scale, protected areas, layer order, focus visibility, and responsive label layout.
-- Media acceptance uses the optimized JPG derivatives for all 14 works. Confirm each public URL, intrinsic size/aspect preservation, alt text, and that no source original is bundled or publicly exposed.
+## 5. END 与完成状态
 
-## Out of Scope
+- END 是独立白色画框，框内仅居中手写 `END`，沿用展览画框语言。
+- 不出现兔子、不自动跳转、不倒计时、没有“再看一次”。
+- 只有进入 END 才标记完成并解锁底部小圆圈。圆圈在 END 保留。
+- 完成状态使用当前标签页的 `sessionStorage`，刷新后回序言但目录仍解锁；新的独立访问从未完成状态开始。不使用跨访问的永久存储。
+- 浏览器复制标签页可能继承 sessionStorage，属于浏览器语义；独立新标签页访问无该记录。
+- 禁止存储时仍可完成当次观展与自由回看，但无法保证刷新后保留解锁。
 
-- A general portfolio, grid-gallery redesign, public search/indexing, multiple exhibitions, accounts, CMS, database, analytics SDK, audio, 3D, or social integrations.
-- Language switching, language-specific routes, photographer biography pages, map/location pages, EXIF/equipment display, or public date/year metadata.
-- Publishing source originals, importing third-party Instagram embeds, or asserting an automated solution to sensitive-person review.
-- Formal domain binding and broad public promotion; those follow satisfactory link-only preview and the creator's explicit authorization.
-- Changing the approved 14-work curatorial order or adding new images without a new curatorial decision.
+## 6. 作品目录与回看
 
-## Further Notes
+- 底部小圆圈轻微上下悬浮，带柔和暖白呼吸光晕；点击展开环形照片目录，只包含 14 张照片。
+- 圆圈视觉轻量，但点击范围至少 44×44px；支持键盘和手机触控。
+- 画廊中央照片突出，两侧沿拱形弧线下沉并退远。底部仅保留一个轻微浮动、循环发光的小圆点，点击收起画廊；不显示分页点、数字、箭头或提示文字。通过键盘方向键或水平拖动/滑动旋转，14 张首尾循环；不自动旋转。
+- 可点击当前可见照片直接观看。后排卡片不参与点击和键盘焦点，当前中央卡片可通过 Tab 到达；展示当前序号与总数。
+- 选择缩略图切换到对应照片并关闭目录，圆圈继续保留。回看末张仍经兔子进入 END。
+- 目录打开时照片层不可交互，兔子隐藏，计时暂停；关闭后兔子原位置恢复，不再重复等待。
+- 支持关闭按钮、Esc、点击外部遮罩。模态内约束键盘焦点，关闭后恢复合理焦点；选择作品后焦点进入新作品。
+- 缩略图延迟加载，保持照片比例；目录不增加序言/END 缩略图。水平拖动结束后抑制尾随点击，避免误进照片。
 
-- All current MVP works are JPGs and are creator-owned. Before any public release, complete **Content risk review** one work at a time; if a person is concerning or identifiable in a way the creator does not wish to publish, remove that work from the launch sequence or make it non-identifying.
-- The current code has known gaps this specification resolves: it enters ENDING before the final work can be viewed; it leaves a visible rabbit over Dock; it displays Next in ordinary motion; it supports direct arrow-key jumps; and it does not yet provide complete modal focus behavior.
-- The first public milestone is a non-indexed **Link-only preview**, not a formal-domain launch. Use real browser evidence to approve it before any external publication action.
+## 7. 不变的边界
+
+- 不改变作品顺序，不裁切照片主体；保留标题、序号与准确 alt。
+- 当前中文说明和英文标题原样保留，本次不扩展翻译、传记或 EXIF。
+- 不新增账号、CMS、分析脚本、声音或远程状态存储。
+- 媒体继续使用公开衍生图路径；私有源文件不发布。
+- 此次授权为本地文档与开发，不包含 Git 推送、部署或公开发布。
+
+## 8. 验收
+
+- 首屏序言无后台进度；开始后先显示首张，慢图加载不提前耗尽观看时间。
+- 14 张逐张完成，末张点击前圆圈不存在；END 解锁后可选任意照片，刷新保留解锁。
+- 回看照片加载后立即有兔子，目录不改变原兔子位置。
+- 桌面与手机检查画框、兔子四边、窄屏避让、文字滚动、END 与目录；照片不被裁切，页面无横向溢出。
+- Tab/Enter/Space 可完成主线；目录焦点约束、Esc、外部关闭与焦点恢复有效。
+- 状态机拒绝过期计时器、过期图片加载回调、重复点击与未完成时的直接跳转。
+- 测试、类型检查、Lint 和生产构建通过；浏览器视觉验收与自动测试结果分开记录。

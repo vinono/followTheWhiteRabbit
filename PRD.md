@@ -1,5 +1,8 @@
 # Find the White Rabbit — 产品需求文档
 
+> **2026-09-19 更新**：当前体验已改为「序言画框 → 照片 → END → 解锁目录」。取消 Home/About、Restart 和 reduced-motion Next 分支，兔子相对画框出现。以下保留早期设计记录；交互冲突以[最新确认规格](docs/approved-exhibition-spec.md)为准，实现与验证见 [开发记录](docs/exhibition-redesign-2026-09-19.md)。
+
+
 ## 概要
 
 - **类型**：单一主题的在线数字摄影展，而非普通摄影作品集。

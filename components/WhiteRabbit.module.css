@@ -1,109 +1,42 @@
 .rabbitButton {
-  transition: opacity 0.3s ease;
+  position: absolute;
+  z-index: 2;
+  width: 100px;
+  max-width: 26%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  animation: appear 450ms ease-out both;
+  transition: opacity 200ms ease;
 }
-
 .asset {
   display: block;
-  width: clamp(120px, 11vw, 180px);
-  height: auto;
+  width: 100%;
+  height: 100%;
   user-select: none;
   pointer-events: none;
-  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.16));
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.12));
 }
-
-.rabbitButton:hover .asset {
-  transform: scale(1.04) translateY(-2px);
-}
-
-.left {
-  left: 0;
-  top: 45%;
-  animation: peekLeft 0.45s ease-out forwards;
-}
-
-.right {
-  right: 0;
-  top: 45%;
-  animation: peekRight 0.45s ease-out forwards;
-}
-
+.rabbitButton:focus-visible { outline: 2px solid #767676; outline-offset: -2px; border-radius: 12px; }
+.rabbitButton:hover .asset { filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.22)); }
+.left { left: 4px; top: var(--rabbit-position); transform: translateY(-50%); }
+.right { right: 4px; top: var(--rabbit-position); transform: translateY(-50%); }
+/* The top asset's paws end around row 320 of its 768px canvas.
+   Crop the empty lower canvas and rest the paws just over the frame edge. */
 .top {
   top: 0;
-  left: 50%;
-  animation: peekTop 0.45s ease-out forwards;
+  left: var(--rabbit-position);
+  aspect-ratio: 512 / 340;
+  transform: translate(-50%, -88%);
 }
-
-.bottom {
-  right: 4rem;
-  bottom: 0;
-  animation: peekBottom 0.45s ease-out forwards;
-}
-
-.left.exiting {
-  animation: exitLeft 0.3s ease-in forwards;
-}
-
-.right.exiting {
-  animation: exitRight 0.3s ease-in forwards;
-}
-
-.top.exiting {
-  animation: exitTop 0.3s ease-in forwards;
-}
-
-.bottom.exiting {
-  animation: exitBottom 0.3s ease-in forwards;
-}
-
-@keyframes peekLeft {
-  from { transform: translateX(-100%); opacity: 0; }
-  to { transform: translateX(-12%); opacity: 1; }
-}
-
-@keyframes exitLeft {
-  to { transform: translateX(-100%); opacity: 0; }
-}
-
-@keyframes peekRight {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(12%); opacity: 1; }
-}
-
-@keyframes exitRight {
-  to { transform: translateX(100%); opacity: 0; }
-}
-
-@keyframes peekTop {
-  from { transform: translate(-50%, -100%); opacity: 0; }
-  to { transform: translate(-50%, -12%); opacity: 1; }
-}
-
-@keyframes exitTop {
-  to { transform: translate(-50%, -100%); opacity: 0; }
-}
-
-@keyframes peekBottom {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(8%); opacity: 1; }
-}
-
-@keyframes exitBottom {
-  to { transform: translateY(100%); opacity: 0; }
-}
-
+.top .asset { object-fit: cover; object-position: top; }
+.bottom { bottom: 4px; left: var(--rabbit-position); transform: translateX(-50%); }
+.exiting { animation: disappear 200ms ease-in both; pointer-events: none; }
+@keyframes appear { from { opacity: 0; } to { opacity: 1; } }
+@keyframes disappear { to { opacity: 0; } }
 @media (max-width: 760px) {
-  .asset {
-    width: 130px;
-  }
-
-  .bottom {
-    right: 1rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rabbitButton {
-    display: none;
-  }
+  .rabbitButton { width: 76px; }
 }

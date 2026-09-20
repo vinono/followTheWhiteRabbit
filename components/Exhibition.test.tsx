@@ -1,311 +1,200 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Exhibition } from "./Exhibition";
+import { artworks } from "../content/artworks";
+import { COMPLETION_KEY } from "../lib/exhibition-fsm";
 
-async function advanceExhibitionTime(milliseconds: number) {
-  await act(async () => {
-    vi.advanceTimersByTime(milliseconds);
-  });
+async function advance(milliseconds: number) {
+  await act(async () => { vi.advanceTimersByTime(milliseconds); });
 }
-
-async function revealRabbit(waitMilliseconds: number) {
-  await advanceExhibitionTime(700);
-  await advanceExhibitionTime(6000);
-  await advanceExhibitionTime(waitMilliseconds);
+function start() { fireEvent.click(screen.getByRole("button", { name: "开始观看" })); }
+async function loadPhoto(index = 0) {
+  await act(async () => { fireEvent.load(screen.getByAltText(artworks[index].alt)); });
+}
+async function reveal(index = 0) {
+  await loadPhoto(index);
+  await advance(500);
+  await advance(2000);
+  await advance(500);
+}
+function restoreCompletedVisit() {
+  sessionStorage.setItem(COMPLETION_KEY, "true");
+  return render(<Exhibition />);
+}
+function openDock() { fireEvent.click(screen.getByRole("button", { name: "Browse artworks" })); }
+function selectFromGallery(number: number) {
+  for (let step = 0; step < artworks.length; step++) {
+    const card = screen.queryByRole("button", { name: `View artwork ${number}` });
+    if (card?.tabIndex === 0) break;
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "ArrowRight" });
+  }
+  fireEvent.click(screen.getByRole("button", { name: `View artwork ${number}` }));
 }
 
 describe("Exhibition visitor flow", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.useRealTimers();
-  });
-
-  it("keeps the White Rabbit as the only ordinary-motion forward cue", () => {
-    render(<Exhibition />);
-
-    const currentArtwork = screen.getByAltText(
-      "一名女子站在地铁车门旁，望向玻璃中的倒影",
-    );
-    expect(currentArtwork.getAttribute("width")).toBe("1080");
-    expect(currentArtwork.getAttribute("height")).toBe("1080");
-    expect(screen.queryByRole("button", { name: "Next artwork" })).toBeNull();
-
-    fireEvent.keyDown(window, { key: "ArrowRight" });
-    expect(screen.getByLabelText("Artwork 1 of 14")).toBeTruthy();
-
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
-    expect(screen.getByLabelText("Artwork 1 of 14")).toBeTruthy();
-  });
-
-  it("defers Dock thumbnails and keeps them decorative", () => {
-    render(<Exhibition />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Browse artworks" }));
-    const firstThumbnail = screen.getByRole("button", { name: "View artwork 1" }).querySelector("img");
-
-    expect(firstThumbnail?.getAttribute("loading")).toBe("lazy");
-    expect(firstThumbnail?.getAttribute("alt")).toBe("");
-  });
-
-  it("announces the rabbit after the full viewing rhythm without stealing focus", async () => {
-    vi.spyOn(Math, "random").mockReturnValue(0.9999);
-    render(<Exhibition />);
-
-    const homeButton = screen.getByRole("button", { name: "Home" });
-    homeButton.focus();
-
-    await advanceExhibitionTime(700);
-    await advanceExhibitionTime(5999);
-    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
-
-    await advanceExhibitionTime(1);
-    await advanceExhibitionTime(1999);
-    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
-
-    await advanceExhibitionTime(2001);
-
-    expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
-    expect(screen.getByRole("status").textContent).toBe("White Rabbit is ready to follow.");
-    expect(document.activeElement).toBe(homeButton);
-  });
-
-  it.each([
-    ["Enter", "{Enter}"],
-    ["Space", " "],
-  ])("lets a visitor reach the rabbit by Tab and follow it with %s", async (_name, key) => {
+    sessionStorage.clear();
     vi.spyOn(Math, "random").mockReturnValue(0);
+    vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
+      matches: false, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    })));
+  });
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+
+  it("shows the framed introduction without navigation or background progression", async () => {
     render(<Exhibition />);
+    expect(screen.getByRole("heading", { name: "Follow the white rabbit" })).toBeTruthy();
+    expect(screen.getByText("请停下来。等待那只白兔出现。")).toBeTruthy();
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Browse artworks" })).toBeNull();
+    await advance(60000);
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+    expect(screen.queryByAltText(artworks[0].alt)).toBeNull();
+  });
 
-    await revealRabbit(2000);
+  it("waits for the image load, entrance, dwell, and random wait without stealing focus", async () => {
+    render(<Exhibition />);
+    start();
+    const stage = screen.getByRole("region", { name: "Artwork 1 of 14" });
+    expect(document.activeElement).toBe(stage);
+    await advance(60000);
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+    await loadPhoto();
+    await advance(500);
+    await advance(1999);
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+    await advance(1);
+    await advance(499);
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+    await advance(1);
+    expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("ready to follow");
+    expect(document.activeElement).toBe(stage);
+    expect(screen.queryByRole("button", { name: "Next artwork" })).toBeNull();
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(screen.getByAltText(artworks[0].alt)).toBeTruthy();
+  });
 
+  it.each([["Enter", "{Enter}"], ["Space", " "]])("supports Tab and %s to follow the rabbit once", async (_name, key) => {
+    render(<Exhibition />);
+    start();
+    await reveal();
     vi.useRealTimers();
     const user = userEvent.setup();
-    screen.getByRole("button", { name: "About" }).focus();
     await user.tab();
-    expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: "Follow the White Rabbit" }),
-    );
-
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Follow the White Rabbit" }));
     await user.keyboard(key);
-    expect(await screen.findByLabelText("Artwork 2 of 14")).toBeTruthy();
+    expect(await screen.findByAltText(artworks[1].alt)).toBeTruthy();
   });
 
-  it("advances exactly one artwork after the visitor follows the rabbit", async () => {
-    render(<Exhibition />);
-
-    await revealRabbit(4000);
-
-    fireEvent.click(screen.getByRole("button", { name: "Follow the White Rabbit" }));
-    await advanceExhibitionTime(300);
-
-    expect(screen.getByLabelText("Artwork 2 of 14")).toBeTruthy();
-  });
-
-  it("shows the final artwork until the visitor ends the exhibition, then restarts at the first artwork", async () => {
-    render(<Exhibition />);
-
-    expect(screen.getByAltText("一名女子站在地铁车门旁，望向玻璃中的倒影")).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "Browse artworks" }));
-    fireEvent.click(screen.getByRole("button", { name: "View artwork 14" }));
-    await advanceExhibitionTime(700);
-
-    expect(screen.getByAltText("拥挤的车厢里，两名女子隔着人群相向站立")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "结束展览" }));
-
-    expect(screen.getByRole("heading", { name: /rabbit has gone deeper/i })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Restart" }));
-
-    expect(screen.getByAltText("一名女子站在地铁车门旁，望向玻璃中的倒影")).toBeTruthy();
-  });
-
-  it("closes the Dock via Escape key and returns focus to the dock trigger", () => {
-    render(<Exhibition />);
-
-    const dockTrigger = screen.getByRole("button", { name: "Browse artworks" });
-    fireEvent.click(dockTrigger);
-    expect(screen.getByRole("region", { name: "Browse artworks" })).toBeTruthy();
-
-    fireEvent.keyDown(window, { key: "Escape" });
-    expect(screen.queryByRole("region", { name: "Browse artworks" })).toBeNull();
-    expect(document.activeElement).toBe(dockTrigger);
-  });
-
-  it("closes the Dock when clicking the backdrop", () => {
-    const { container } = render(<Exhibition />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Browse artworks" }));
-    expect(screen.getByRole("region", { name: "Browse artworks" })).toBeTruthy();
-
-    const backdrop = container.querySelector(".dockBackdrop");
-    expect(backdrop).toBeTruthy();
-    fireEvent.click(backdrop!);
-
-    expect(screen.queryByRole("region", { name: "Browse artworks" })).toBeNull();
-  });
-
-  it("freezes the dwell viewing rhythm while About is open and resumes remaining dwell on close", async () => {
-    vi.spyOn(Math, "random").mockReturnValue(0);
-    render(<Exhibition />);
-
-    // Complete entrance (700ms)
-    await advanceExhibitionTime(700);
-
-    // Dwell 2000ms out of 6000ms
-    await advanceExhibitionTime(2000);
-
-    // Open About
-    fireEvent.click(screen.getByRole("button", { name: "About" }));
-    expect(screen.getByRole("dialog", { name: /Find the White Rabbit/i })).toBeTruthy();
-
-    // Advance 15 seconds while reading About
-    await advanceExhibitionTime(15000);
-    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
-
-    // Close About via Escape
-    fireEvent.keyDown(window, { key: "Escape" });
-    expect(screen.queryByRole("dialog")).toBeNull();
-
-    // Remaining dwell is 4000ms: advance 3999ms -> still viewing, no rabbit
-    await advanceExhibitionTime(3999);
-    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
-
-    // Advance 1ms (completes dwell) + 1999ms of 2000ms random wait -> still no rabbit
-    await advanceExhibitionTime(1);
-    await advanceExhibitionTime(1999);
-    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
-
-    // Advance remaining 1ms -> rabbit appears!
-    await advanceExhibitionTime(1);
+  it("completes all 14 photographs before unlocking END, then restores the directory after refresh", async () => {
+    const view = render(<Exhibition />);
+    start();
+    for (let index = 0; index < artworks.length; index++) {
+      expect(screen.getByAltText(artworks[index].alt)).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Browse artworks" })).toBeNull();
+      await reveal(index);
+      const rabbit = screen.getByRole("button", { name: "Follow the White Rabbit" });
+      fireEvent.click(rabbit);
+      fireEvent.click(rabbit);
+      expect(screen.queryByRole("heading", { name: "END" })).toBeNull();
+      await advance(200);
+    }
+    expect(screen.getByRole("heading", { name: "END" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Restart" })).toBeNull();
+    expect(sessionStorage.getItem(COMPLETION_KEY)).toBe("true");
+    openDock();
+    const dialog = screen.getByRole("dialog", { name: "Browse artworks" });
+    expect(dialog.querySelectorAll("[data-card]")).toHaveLength(14);
+    expect(within(dialog).getAllByRole("button", { name: /View artwork/ })).toHaveLength(7);
+    selectFromGallery(4);
+    await loadPhoto(3);
     expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
+    view.unmount();
+    render(<Exhibition />);
+    expect(screen.getByRole("button", { name: "开始观看" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Browse artworks" })).toBeTruthy();
   });
 
-  it("hides a visible rabbit when Dock opens, and resumes from waiting phase after closing", async () => {
-    vi.spyOn(Math, "random").mockReturnValue(0);
-    render(<Exhibition />);
-
-    // Wait until rabbit is visible
-    await revealRabbit(2000);
-    expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
-
-    // Open Dock
-    fireEvent.click(screen.getByRole("button", { name: "Browse artworks" }));
-    expect(screen.getByRole("region", { name: "Browse artworks" })).toBeTruthy();
-
-    // White Rabbit must be hidden
+  it("keeps rabbit position stable across directory open/close and restores keyboard focus", async () => {
+    const { container } = restoreCompletedVisit();
+    start(); await loadPhoto();
+    const rabbit = screen.getByRole("button", { name: "Follow the White Rabbit" });
+    const placement = rabbit.getAttribute("style");
+    openDock();
     expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
-
-    // Close Dock
-    fireEvent.keyDown(window, { key: "Escape" });
-    expect(screen.queryByRole("region", { name: "Browse artworks" })).toBeNull();
-
-    // Rabbit does not reappear immediately (it resumes from waiting phase)
-    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
-
-    // Advance 1999ms of 2000ms random wait
-    await advanceExhibitionTime(1999);
-    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
-
-    // Advance 1ms -> rabbit reappears!
-    await advanceExhibitionTime(1);
-    expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
-  });
-
-  it("traps focus inside About modal and returns focus to About button upon closing", async () => {
-    render(<Exhibition />);
-
-    const aboutButton = screen.getByRole("button", { name: "About" });
-    aboutButton.focus();
-    fireEvent.click(aboutButton);
-
-    const closeButton = screen.getByRole("button", { name: "Close about" });
-    expect(document.activeElement).toBe(closeButton);
-
-    // Tab key inside modal loops focus
-    fireEvent.keyDown(window, { key: "Tab" });
-    expect(document.activeElement).toBe(closeButton);
-
+    expect(container.querySelector(".stage")?.hasAttribute("inert")).toBe(true);
+    const close = screen.getByRole("button", { name: "Close gallery dock" });
+    expect(document.activeElement).toBe(close);
     fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
-    expect(document.activeElement).toBe(closeButton);
-
-    // Close About via close button
-    fireEvent.click(closeButton);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close gallery" }));
+    fireEvent.keyDown(window, { key: "Tab" });
+    expect(document.activeElement).toBe(close);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Browse artworks" }));
+    expect(screen.getByRole("button", { name: "Follow the White Rabbit" }).getAttribute("style")).toBe(placement);
+    openDock();
+    fireEvent.click(container.querySelector(".dockBackdrop")!);
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(document.activeElement).toBe(aboutButton);
   });
 
-  describe("reduced-motion mode alternative path", () => {
-    it("does not schedule White Rabbit, provides direct Next button for non-final artworks, and preserves final artwork ending and restart", async () => {
-      render(<Exhibition prefersReducedMotion={true} />);
+  it("keeps consecutive desktop rabbits on different permitted edges", async () => {
+    render(<Exhibition />);
+    start();
+    await reveal();
+    const first = screen.getByRole("button", { name: "Follow the White Rabbit" }).querySelector("img")?.getAttribute("src");
+    fireEvent.click(screen.getByRole("button", { name: "Follow the White Rabbit" }));
+    await advance(200);
+    await reveal(1);
+    const second = screen.getByRole("button", { name: "Follow the White Rabbit" }).querySelector("img")?.getAttribute("src");
+    expect(first).toContain("bottom");
+    expect(second).toContain("left");
+  });
 
-      // Non-final artwork has direct Next button
-      const nextButton = screen.getByRole("button", { name: "Next artwork" });
-      expect(nextButton).toBeTruthy();
+  it("uses a vertical safe edge on narrow screens", async () => {
+    vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
+      matches: query.includes("max-width"), media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    })));
+    restoreCompletedVisit();
+    openDock();
+    // This photograph only permits side edges on desktop.
+    selectFromGallery(6);
+    await loadPhoto(5);
+    const rabbit = screen.getByRole("button", { name: "Follow the White Rabbit" });
+    expect(rabbit.querySelector("img")?.getAttribute("src")).toContain("top");
+  });
 
-      // Advance past entrance and dwell times
-      await advanceExhibitionTime(700);
-      await advanceExhibitionTime(6000);
-      await advanceExhibitionTime(4000);
+  it("does not replace the rabbit when the system requests reduced motion", async () => {
+    vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
+      matches: query.includes("prefers-reduced-motion"), media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    })));
+    render(<Exhibition />);
+    start(); await reveal();
+    expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Next artwork" })).toBeNull();
+  });
 
-      // White Rabbit must NOT be scheduled or rendered
-      expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
-      expect(screen.queryByRole("status")).toBeNull();
+  it("works with unavailable session storage and treats a new session as incomplete", async () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
+    render(<Exhibition />);
+    start(); await reveal();
+    expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Browse artworks" })).toBeNull();
+  });
 
-      // Advancing with direct Next button
-      fireEvent.click(nextButton);
-      await advanceExhibitionTime(700);
-      expect(screen.getByLabelText("Artwork 2 of 14")).toBeTruthy();
-
-      // Use Dock to jump to final artwork (Artwork 14)
-      fireEvent.click(screen.getByRole("button", { name: "Browse artworks" }));
-      fireEvent.click(screen.getByRole("button", { name: "View artwork 14" }));
-      await advanceExhibitionTime(700);
-
-      // Final artwork: Next button is NOT displayed
-      expect(screen.queryByRole("button", { name: "Next artwork" })).toBeNull();
-      expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
-
-      // Ending flow: 结束展览 button is available
-      const endBtn = screen.getByRole("button", { name: "结束展览" });
-      expect(endBtn).toBeTruthy();
-
-      fireEvent.click(endBtn);
-      expect(screen.getByRole("heading", { name: /rabbit has gone deeper/i })).toBeTruthy();
-
-      // Restart flow
-      fireEvent.click(screen.getByRole("button", { name: "Restart" }));
-      await advanceExhibitionTime(700);
-      expect(screen.getByLabelText("Artwork 1 of 14")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Next artwork" })).toBeTruthy();
-    });
-
-    it("respects controlled prefers-reduced-motion media query environment", () => {
-      const originalMatchMedia = window.matchMedia;
-      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-        matches: query === "(prefers-reduced-motion: reduce)",
-        media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      }));
-
-      try {
-        render(<Exhibition />);
-
-        // Should automatically detect reduced motion
-        expect(screen.getByRole("button", { name: "Next artwork" })).toBeTruthy();
-        expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
-      } finally {
-        window.matchMedia = originalMatchMedia;
-      }
-    });
+  it("loads decorative directory thumbnails lazily and reaches END again from a revisited final photo", async () => {
+    restoreCompletedVisit();
+    openDock();
+    const thumbnail = screen.getByRole("button", { name: "View artwork 1" }).querySelector("img");
+    expect(thumbnail?.getAttribute("loading")).toBe("lazy");
+    expect(thumbnail?.getAttribute("alt")).toBe("");
+    selectFromGallery(14);
+    await loadPhoto(13);
+    fireEvent.click(screen.getByRole("button", { name: "Follow the White Rabbit" }));
+    await advance(200);
+    expect(screen.getByRole("heading", { name: "END" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Browse artworks" })).toBeTruthy();
   });
 });

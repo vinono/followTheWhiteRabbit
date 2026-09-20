@@ -1,26 +1,14 @@
-"use client";
-
-import React from "react";
-import { exhibition } from "../content/artworks";
-
-interface EndScreenProps {
-  onRestart: () => void;
-}
-
-export function EndScreen({ onRestart }: EndScreenProps) {
+export function EndScreen() {
   return (
-    <div className="endScreen" role="dialog" aria-labelledby="end-title">
-      <div className="endContent">
-        <h2 id="end-title" className="endTitle">
-          {exhibition.endMessage}
-        </h2>
-        <button className="restartBtn" onClick={onRestart}>
-          <span>Restart</span>
-          <svg className="restartIcon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M3.5 10a6.5 6.5 0 1 0 1.9-4.6M3.5 4.5v5h5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </div>
+    <div className="artworkFrame textFrame endFrame">
+      <h1 className="srOnly">END</h1>
+      <svg className="endHandwriting" viewBox="0 0 300 140" fill="none" aria-hidden="true">
+        <g stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M91 30 C78 29 62 32 47 34 L34 108 Q59 105 80 107 M44 68 L79 65" />
+          <path d="M109 108 Q116 66 122 31 C129 57 140 87 153 108 Q160 68 170 28" />
+          <path d="M195 33 Q188 71 181 108 M193 33 C257 17 268 51 252 79 C240 100 211 110 181 108" />
+        </g>
+      </svg>
     </div>
   );
 }

@@ -1,5 +1,8 @@
 # Find the White Rabbit — 开发执行清单
 
+> **2026-09-19 更新**：当前体验已改为「序言画框 → 照片 → END → 解锁目录」。取消 Home/About、Restart 和 reduced-motion Next 分支，兔子相对画框出现。以下保留早期设计记录；交互冲突以[最新确认规格](approved-exhibition-spec.md)为准，实现与验证见 [开发记录](exhibition-redesign-2026-09-19.md)。
+
+
 > 这是开发顺序；开始编码前先完成策展与视觉确认。
 
 ## 第一轮：策展与资产

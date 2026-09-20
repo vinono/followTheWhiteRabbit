@@ -9,3 +9,5 @@ media/*
 
 # Local configuration only.
 .env*.local
+
+.agents
