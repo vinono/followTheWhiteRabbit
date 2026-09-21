@@ -32,7 +32,7 @@ const mediaUrl = (file: string) => {
 
 // Keep only object keys here. The original files remain outside Git.
 const source: Omit<Artwork, "label">[] = [
-  { file: "201807/17940891781080539.jpg", alt: "一名女子站在地铁车门旁，望向玻璃中的倒影", title: "Threshold / 临界", width: 1080, height: 1080, allowedEdges: ["bottom", "right"] },
+  { file: "17940891781080539.jpg", alt: "一名女子站在地铁车门旁，望向玻璃中的倒影", title: "Threshold / 临界", width: 1080, height: 1080, allowedEdges: ["bottom", "right"] },
   { file: "17956356046161242.jpg", alt: "一名短发女子站在地铁车门旁低头看手机", title: "Blue Light / 蓝光", width: 1080, height: 1080, allowedEdges: ["left", "bottom", "right"] },
   { file: "17958200719158700.jpg", alt: "拥挤的地铁车厢里，一名女子倚墙低头看手机", title: "Carried Away / 被带走", width: 1080, height: 1080, allowedEdges: ["top", "right", "bottom"] },
   { file: "17980396618076789.jpg", alt: "拥挤的地铁车厢里，多名乘客各自低头看手机", title: "Same Direction / 同向", width: 1080, height: 1077, allowedEdges: ["left", "top", "bottom"] },
@@ -42,9 +42,9 @@ const source: Omit<Artwork, "label">[] = [
   { file: "17892799627283956.jpg", alt: "一名戴耳机的女子倚靠车厢，闭眼握着手机", title: "Drift / 漂流", width: 1080, height: 1080, allowedEdges: ["left", "bottom"] },
   { file: "17916287581237768.jpg", alt: "一名戴眼镜和耳机的女子坐在地铁里低头阅读", title: "Private Frequency / 私人频率", width: 1080, height: 1080, allowedEdges: ["top", "left", "right"] },
   { file: "18005019427046922.jpg", alt: "一名低头女子的长发遮住侧脸", title: "Veil / 帘幕", width: 1080, height: 1080, allowedEdges: ["right", "bottom"] },
-  { file: "201807/17886990100240451.jpg", alt: "一名戴耳机的长发女子在地铁里低头站立", title: "Inward / 向内", width: 1080, height: 1080, allowedEdges: ["left", "top"] },
-  { file: "201807/17966449912043585.jpg", alt: "拥挤的地铁里，一名女子举手握住扶手", title: "Hold / 握住", width: 1080, height: 1080, allowedEdges: ["right", "bottom"] },
-  { file: "201807/17882414959241973.jpg", alt: "地铁乘客之间，一只印有文字的白色布袋占据画面中央", title: "Passing Words / 掠过的字", width: 1080, height: 1080, allowedEdges: ["top", "left"] },
+  { file: "17886990100240451.jpg", alt: "一名戴耳机的长发女子在地铁里低头站立", title: "Inward / 向内", width: 1080, height: 1080, allowedEdges: ["left", "top"] },
+  { file: "17966449912043585.jpg", alt: "拥挤的地铁里，一名女子举手握住扶手", title: "Hold / 握住", width: 1080, height: 1080, allowedEdges: ["right", "bottom"] },
+  { file: "17882414959241973.jpg", alt: "地铁乘客之间，一只印有文字的白色布袋占据画面中央", title: "Passing Words / 掠过的字", width: 1080, height: 1080, allowedEdges: ["top", "left"] },
   { file: "17977682125051553.jpg", alt: "拥挤的车厢里，两名女子隔着人群相向站立", title: "Almost Meeting / 几乎相遇", width: 1080, height: 1080, allowedEdges: ["top", "bottom", "left", "right"] },
 ];
 
