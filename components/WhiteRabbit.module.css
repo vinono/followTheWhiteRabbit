@@ -9,6 +9,10 @@
   border: 0;
   background: none;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  outline: none;
   animation: appear 450ms ease-out both;
   transition: opacity 200ms ease;
 }

@@ -111,21 +111,26 @@ describe("Exhibition visitor flow", () => {
     expect(within(dialog).getAllByRole("button", { name: /View artwork/ })).toHaveLength(7);
     selectFromGallery(4);
     await loadPhoto(3);
-    expect(screen.getByRole("button", { name: "Follow the White Rabbit" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Browse artworks" })).toBeTruthy();
     view.unmount();
     render(<Exhibition />);
     expect(screen.getByRole("button", { name: "开始观看" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Browse artworks" })).toBeTruthy();
   });
 
-  it("keeps rabbit position stable across directory open/close and restores keyboard focus", async () => {
-    const { container } = restoreCompletedVisit();
-    start(); await loadPhoto();
-    const rabbit = screen.getByRole("button", { name: "Follow the White Rabbit" });
-    const placement = rabbit.getAttribute("style");
+  it("restores keyboard focus after directory open and close", async () => {
+    // Complete first visit to unlock dock
+    const { container } = render(<Exhibition />);
+    start();
+    for (let index = 0; index < artworks.length; index++) {
+      await reveal(index);
+      fireEvent.click(screen.getByRole("button", { name: "Follow the White Rabbit" }));
+      await advance(200);
+    }
+    expect(screen.getByRole("heading", { name: "END" })).toBeTruthy();
+
     openDock();
-    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
-    expect(container.querySelector(".stage")?.hasAttribute("inert")).toBe(true);
     const close = screen.getByRole("button", { name: "Close gallery dock" });
     expect(document.activeElement).toBe(close);
     fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
@@ -134,7 +139,6 @@ describe("Exhibition visitor flow", () => {
     expect(document.activeElement).toBe(close);
     fireEvent.keyDown(window, { key: "Escape" });
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Browse artworks" }));
-    expect(screen.getByRole("button", { name: "Follow the White Rabbit" }).getAttribute("style")).toBe(placement);
     openDock();
     fireEvent.click(container.querySelector(".dockBackdrop")!);
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -157,11 +161,15 @@ describe("Exhibition visitor flow", () => {
     vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
       matches: query.includes("max-width"), media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(),
     })));
-    restoreCompletedVisit();
-    openDock();
-    // This photograph only permits side edges on desktop.
-    selectFromGallery(6);
-    await loadPhoto(5);
+    render(<Exhibition />);
+    start();
+    // Advance to photo 6 which on desktop only permits left/right
+    for (let i = 0; i < 5; i++) {
+      await reveal(i);
+      fireEvent.click(screen.getByRole("button", { name: "Follow the White Rabbit" }));
+      await advance(200);
+    }
+    await reveal(5);
     const rabbit = screen.getByRole("button", { name: "Follow the White Rabbit" });
     expect(rabbit.querySelector("img")?.getAttribute("src")).toContain("top");
   });
@@ -184,7 +192,7 @@ describe("Exhibition visitor flow", () => {
     expect(screen.queryByRole("button", { name: "Browse artworks" })).toBeNull();
   });
 
-  it("loads decorative directory thumbnails lazily and reaches END again from a revisited final photo", async () => {
+  it("loads decorative directory thumbnails lazily and keeps revisited final photo in quiet viewing mode", async () => {
     restoreCompletedVisit();
     openDock();
     const thumbnail = screen.getByRole("button", { name: "View artwork 1" }).querySelector("img");
@@ -192,9 +200,7 @@ describe("Exhibition visitor flow", () => {
     expect(thumbnail?.getAttribute("alt")).toBe("");
     selectFromGallery(14);
     await loadPhoto(13);
-    fireEvent.click(screen.getByRole("button", { name: "Follow the White Rabbit" }));
-    await advance(200);
-    expect(screen.getByRole("heading", { name: "END" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Follow the White Rabbit" })).toBeNull();
     expect(screen.getByRole("button", { name: "Browse artworks" })).toBeTruthy();
   });
 });

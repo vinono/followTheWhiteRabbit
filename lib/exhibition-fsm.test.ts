@@ -56,12 +56,12 @@ describe("exhibition progression invariants", () => {
     expect(transitionExhibition(next, { type: "ARTWORK_LOADED", generation: 8, rabbit })).toBe(next);
   });
 
-  it("restores completion without skipping intro, and makes revisited photos immediately navigable after load", () => {
+  it("restores completion without skipping intro, and keeps revisited photos in quiet viewing mode without rabbit", () => {
     const restored = transitionExhibition(initialExhibition, { type: "RESTORE_COMPLETION" });
     expect(restored.status).toBe("INTRO");
     const loading = transitionExhibition(restored, { type: "GOTO_ARTWORK", index: 7 });
     const ready = transitionExhibition(loading, { type: "ARTWORK_LOADED", generation: loading.generation, rabbit });
-    expect(ready.status).toBe("RABBIT_VISIBLE");
-    expect(ready.rabbit).toEqual(rabbit);
+    expect(ready.status).toBe("VIEWING");
+    expect(ready.rabbit).toBeNull();
   });
 });

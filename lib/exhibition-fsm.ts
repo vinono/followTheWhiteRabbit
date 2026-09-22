@@ -49,12 +49,13 @@ export function transitionExhibition(state: ExhibitionModel, action: ExhibitionA
     case "ARTWORK_LOADED":
       if (state.status !== "LOADING_ARTWORK") return state;
       return state.completed
-        ? { ...state, status: "RABBIT_VISIBLE", rabbit: action.rabbit }
+        ? { ...state, status: "VIEWING", rabbit: null }
         : { ...state, status: "ENTERING_ARTWORK", rabbit: action.rabbit };
     case "FINISH_ENTERING":
       return state.status === "ENTERING_ARTWORK" ? { ...state, status: "VIEWING" } : state;
     case "DWELL_TIMEOUT":
-      return state.status === "VIEWING" ? { ...state, status: "WAITING_FOR_RABBIT" } : state;
+      if (state.status !== "VIEWING") return state;
+      return state.completed ? state : { ...state, status: "WAITING_FOR_RABBIT" };
     case "SPAWN_RABBIT":
       return state.status === "WAITING_FOR_RABBIT" ? { ...state, status: "RABBIT_VISIBLE" } : state;
     case "CLICK_RABBIT":
