@@ -77,7 +77,7 @@ export function Exhibition() {
   };
 
   return (
-    <main className="exhibition">
+    <main className={`exhibition ${completed ? "isCompleted" : ""}`}>
       <section
         ref={stageRef}
         className={`stage ${isIntro || isEnding ? "textStage" : ""}`}
